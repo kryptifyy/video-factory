@@ -986,12 +986,24 @@ async function saveNow() {
 // ============================================================
 // Audio
 // ============================================================
+function ensureAudioContext() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    return audioCtx;
+}
+
 function initAudio() {
     audioEl = new Audio('/api/audio');
     audioEl.crossOrigin = 'anonymous';
     audioEl.preload = 'auto';
     audioEl.playbackRate = S.speed;
     audioEl.preservesPitch = false;
+    // iOS needs this attribute to play inline
+    audioEl.setAttribute('playsinline', '');
 
     audioEl.addEventListener('loadedmetadata', () => {
         S.duration = audioEl.duration;
@@ -1005,33 +1017,42 @@ function initAudio() {
         cancelAnimationFrame(animFrame);
     });
 
-    // Decode audio separately for waveform display (doesn't affect playback)
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    fetch('/api/audio').then(r => r.arrayBuffer()).then(buf => {
-        if (!buf.byteLength) return;
-        return audioCtx.decodeAudioData(buf);
-    }).then(decoded => {
-        if (!decoded) return;
-        audioBuffer = decoded;
-        S.duration = decoded.duration;
-        computeWaveform();
-        renderTimeline();
-        document.getElementById('time-total').textContent = fmt(S.duration);
-    }).catch(e => console.error('Audio decode failed:', e));
+    // Decode waveform — deferred until first user gesture on mobile
+    loadWaveform();
+}
+
+function loadWaveform() {
+    try {
+        const ctx = ensureAudioContext();
+        fetch('/api/audio').then(r => r.arrayBuffer()).then(buf => {
+            if (!buf.byteLength) return;
+            return ctx.decodeAudioData(buf);
+        }).then(decoded => {
+            if (!decoded) return;
+            audioBuffer = decoded;
+            S.duration = decoded.duration;
+            computeWaveform();
+            renderTimeline();
+            document.getElementById('time-total').textContent = fmt(S.duration);
+        }).catch(e => console.error('Audio decode failed:', e));
+    } catch (e) {
+        // AudioContext blocked — will retry on first user gesture
+        console.log('AudioContext deferred until user gesture');
+    }
 }
 
 function connectAnalyser() {
     // Connect on first play (needs user gesture for AudioContext)
     if (audioSourceNode) return; // already connected
     try {
-        audioCtx.resume();
-        audioSourceNode = audioCtx.createMediaElementSource(audioEl);
-        analyser = audioCtx.createAnalyser();
+        const ctx = ensureAudioContext();
+        audioSourceNode = ctx.createMediaElementSource(audioEl);
+        analyser = ctx.createAnalyser();
         analyser.fftSize = 256;
         analyser.smoothingTimeConstant = 0.8;
         analyserData = new Uint8Array(analyser.frequencyBinCount);
         audioSourceNode.connect(analyser);
-        analyser.connect(audioCtx.destination);
+        analyser.connect(ctx.destination);
     } catch (e) {
         console.error('Analyser connect failed:', e);
     }
@@ -1055,8 +1076,10 @@ function computeWaveform() {
 
 function togglePlay() {
     if (!audioEl) return;
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    ensureAudioContext();
     connectAnalyser();
+    // Retry waveform decode if it failed on load (mobile)
+    if (!audioBuffer) loadWaveform();
     if (S.isPlaying) {
         audioEl.pause();
         S.isPlaying = false;
@@ -1067,10 +1090,16 @@ function togglePlay() {
     } else {
         audioEl.playbackRate = S.speed;
         audioEl.preservesPitch = false;
-        audioEl.play().catch(() => {});
-        S.isPlaying = true;
-        firedSfx.clear();
-        tick();
+        audioEl.play().then(() => {
+            S.isPlaying = true;
+            firedSfx.clear();
+            tick();
+            updatePlayBtn();
+        }).catch(e => {
+            console.error('Play failed:', e);
+            toast('Tap play again (audio unlocked)', 'info');
+        });
+        return; // updatePlayBtn called in .then()
     }
     updatePlayBtn();
 }
@@ -1130,26 +1159,26 @@ function checkSfxPlayback() {
 }
 
 async function playSfxSound(sfxId, volume) {
-    if (!audioCtx) return;
+    const ctx = ensureAudioContext();
     if (sfxBuffers[sfxId]) {
-        const src = audioCtx.createBufferSource();
+        const src = ctx.createBufferSource();
         src.buffer = sfxBuffers[sfxId];
-        const gain = audioCtx.createGain();
+        const gain = ctx.createGain();
         gain.gain.value = volume;
-        src.connect(gain).connect(audioCtx.destination);
+        src.connect(gain).connect(ctx.destination);
         src.start();
         return;
     }
     try {
         const resp = await fetch(`/api/sfx/${sfxId}`);
         const buf = await resp.arrayBuffer();
-        const decoded = await audioCtx.decodeAudioData(buf);
+        const decoded = await ctx.decodeAudioData(buf);
         sfxBuffers[sfxId] = decoded;
-        const src = audioCtx.createBufferSource();
+        const src = ctx.createBufferSource();
         src.buffer = decoded;
-        const gain = audioCtx.createGain();
+        const gain = ctx.createGain();
         gain.gain.value = volume;
-        src.connect(gain).connect(audioCtx.destination);
+        src.connect(gain).connect(ctx.destination);
         src.start();
     } catch (e) {}
 }
