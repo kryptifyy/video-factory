@@ -545,18 +545,33 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(0.95); }
 
 /* ===== Mobile Responsive ===== */
 @media (max-width: 768px) {
-    body { overflow: auto; overscroll-behavior: contain; }
+    /* Fix mobile viewport height (100vh is broken on mobile browsers) */
+    html, body { height: 100%; height: 100dvh; overflow: hidden; }
+    .app { height: 100%; height: 100dvh; overflow: hidden; }
 
-    .main { flex-direction: column; }
+    /* Kill all entrance animations on mobile (they cause layout flash) */
+    .nav, .sidebar, .center, .timeline-area, .playback-bar,
+    .bottom-panel, .visualizer-bar, .word-chip, .sfx-card {
+        animation: none !important;
+    }
+
+    .main {
+        flex-direction: column;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
 
     /* Sidebar → horizontal word strip */
     .sidebar {
         width: 100% !important; max-width: none; min-width: 0;
-        height: 90px; border-right: none; border-bottom: 1px solid var(--border);
-        flex-shrink: 0; order: 1;
+        height: 80px; min-height: 80px;
+        border-right: none; border-bottom: 1px solid var(--border);
+        flex-shrink: 0; order: 2;
+        animation: none !important;
     }
-    .sidebar.collapsed { height: 0; opacity: 0; }
-    .panel-header { padding: 6px 10px; }
+    .sidebar.collapsed { height: 0; min-height: 0; opacity: 0; overflow: hidden; }
+    .panel-header { padding: 4px 10px; font-size: 11px; }
     .transcript-words {
         flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
         align-content: center; gap: 6px; padding: 6px 10px;
@@ -565,24 +580,30 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(0.95); }
     .word-chip {
         flex-shrink: 0; min-height: 36px; padding: 6px 10px; font-size: 13px;
         touch-action: manipulation;
+        animation: none !important;
     }
     .sidebar-toggle { top: auto !important; left: auto; right: 8px; bottom: auto; }
     .sidebar-toggle.visible { display: block; position: fixed; top: 50px; right: 8px; left: auto; z-index: 20; }
 
-    /* Center column */
-    .center { order: 2; flex: 1; min-height: 0; }
+    /* Center column — no flex:1, use explicit heights */
+    .center {
+        order: 1; flex: none; display: flex; flex-direction: column;
+        overflow: visible; width: 100%;
+    }
 
-    /* Timeline */
-    .timeline-area { order: 1; }
+    /* Timeline — fixed height */
+    .timeline-area { order: 1; height: 140px; min-height: 140px; flex-shrink: 0; }
     .timeline-labels { display: none; }
-    #timeline-canvas { touch-action: none; }
+    .timeline-scroll { height: 140px; }
+    #timeline-canvas { touch-action: none; height: 140px; }
 
     /* Visualizer — hidden on mobile */
     .visualizer-bar { display: none; }
 
-    /* Playback bar */
+    /* Playback bar — fixed height */
     .playback-bar {
-        flex-wrap: wrap; gap: 8px; padding: 8px 10px; order: 2;
+        flex-wrap: wrap; gap: 8px; padding: 8px 10px; order: 3;
+        flex-shrink: 0;
     }
     .pb-btn { min-width: 44px; min-height: 44px; touch-action: manipulation; }
     .pb-btn.play-btn { width: 48px; height: 48px; font-size: 18px; }
@@ -590,14 +611,20 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(0.95); }
     /* Zoom — hidden on mobile (use pinch) */
     .zoom-section { display: none; }
 
-    /* Bottom panel */
-    .bottom-panel { order: 3; min-height: 200px; }
+    /* Speed section — compact */
+    .pb-label { font-size: 10px; }
+    .pb-slider { width: 60px; }
+
+    /* Bottom panel — takes remaining space */
+    .bottom-panel { order: 4; flex: 1; min-height: 180px; overflow: hidden; }
     .panel-tab { padding: 10px 14px; font-size: 13px; touch-action: manipulation; }
+    .tab-content { overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
     /* SFX grid */
     .sfx-card {
         min-height: 44px; padding: 10px 14px; font-size: 13px;
         cursor: pointer; touch-action: manipulation;
+        animation: none !important;
     }
 
     /* Popups — mobile width */
@@ -609,9 +636,11 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(0.95); }
     .preset-btn { min-height: 44px; padding: 10px 14px; touch-action: manipulation; }
 
     /* Nav compact */
-    .nav { padding: 0 8px; height: 44px; }
+    .nav { padding: 0 8px; height: 44px; flex-shrink: 0; }
     .nav-logo { font-size: 12px; }
     .nav-btn { min-height: 36px; min-width: 36px; padding: 4px 8px; touch-action: manipulation; }
+    /* Hide undo/redo text on small screens */
+    .undo-depth { display: none; }
 
     /* Generate / download buttons */
     .generate-btn, .download-cfg-btn {
@@ -622,6 +651,12 @@ input[type=range]:active::-webkit-slider-thumb { transform: scale(0.95); }
     /* Toast positioning */
     .toast-container { top: auto; bottom: 70px; right: 10px; left: 10px; }
     .toast { max-width: none; }
+
+    /* Loading overlay — make sure it's visible */
+    .loading-overlay {
+        position: fixed; inset: 0; z-index: 300;
+        background: var(--bg-0);
+    }
 }
 </style>
 </head>
@@ -791,6 +826,17 @@ const S = {
 const undoStack = [];
 const redoStack = [];
 const PPS_BASE = 50; // pixels per second at zoom 1
+
+function isMobile() { return window.innerWidth <= 768; }
+
+// Track heights — smaller on mobile to fit 140px
+function getTrackHeights() {
+    if (isMobile()) {
+        return { RULER_H: 20, VOICE_H: 60, PITCH_H: 28, SFX_H: 28 };
+    }
+    return { RULER_H: 28, VOICE_H: 120, PITCH_H: 36, SFX_H: 36 };
+}
+// Desktop defaults (used outside renderTimeline for quick access)
 const RULER_H = 28;
 const VOICE_H = 120;
 const PITCH_H = 36;
@@ -1238,7 +1284,10 @@ function renderTimeline() {
     const dur = Math.max(S.duration || 1, S.words.length ? S.words[S.words.length - 1].end + 1 : 1);
     const fullW = Math.max(scroll.clientWidth, timeToX(dur) + 60);
     const viewW = scroll.clientWidth;
-    const h = CANVAS_H;
+
+    // Use responsive track heights
+    const th = getTrackHeights();
+    const h = th.RULER_H + th.VOICE_H + th.PITCH_H + th.SFX_H;
 
     // Set spacer to full virtual width so scrollbar works
     spacer.style.width = fullW + 'px';
@@ -1255,12 +1304,12 @@ function renderTimeline() {
     ctx.save();
     ctx.translate(-viewOffset, 0);
 
-    drawRuler(ctx, fullW, dur);
-    drawVoiceTrack(ctx, fullW);
-    drawPitchTrack(ctx, fullW);
-    drawSfxTrack(ctx, fullW);
-    drawMarkers(ctx);
-    drawPlayhead(ctx, h);
+    drawRuler(ctx, fullW, dur, th);
+    drawVoiceTrack(ctx, fullW, th);
+    drawPitchTrack(ctx, fullW, th);
+    drawSfxTrack(ctx, fullW, th);
+    drawMarkers(ctx, th);
+    drawPlayhead(ctx, h, th);
     drawLoopRegion(ctx, h);
 
     ctx.restore();
@@ -1270,14 +1319,15 @@ function renderTimeline() {
 function viewLeft() { return viewOffset; }
 function viewRight() { return viewOffset + (document.getElementById('timeline-scroll')?.clientWidth || 2000); }
 
-function drawRuler(ctx, w, dur) {
+function drawRuler(ctx, w, dur, th) {
+    const rh = th.RULER_H;
     const y0 = 0;
     const vl = viewLeft(), vr = viewRight();
     ctx.fillStyle = '#0f0f14';
-    ctx.fillRect(vl, y0, vr - vl, RULER_H);
+    ctx.fillRect(vl, y0, vr - vl, rh);
     ctx.strokeStyle = '#2a2a36';
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(vl, RULER_H - 0.5); ctx.lineTo(vr, RULER_H - 0.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(vl, rh - 0.5); ctx.lineTo(vr, rh - 0.5); ctx.stroke();
 
     // Adaptive tick interval
     const ppx = pps();
@@ -1297,8 +1347,8 @@ function drawRuler(ctx, w, dur) {
         const x = timeToX(t);
         if (x > vr + 20) break;
         ctx.strokeStyle = '#2a2a36';
-        ctx.beginPath(); ctx.moveTo(x, RULER_H - 10); ctx.lineTo(x, RULER_H); ctx.stroke();
-        ctx.fillText(`${Math.floor(t / 60)}:${(t % 60).toString().padStart(2, '0')}`, x, RULER_H - 14);
+        ctx.beginPath(); ctx.moveTo(x, rh - 10); ctx.lineTo(x, rh); ctx.stroke();
+        ctx.fillText(`${Math.floor(t / 60)}:${(t % 60).toString().padStart(2, '0')}`, x, rh - 14);
 
         // Sub-ticks
         if (interval >= 2) {
@@ -1306,25 +1356,26 @@ function drawRuler(ctx, w, dur) {
                 const sx = timeToX(t + st);
                 if (sx > vr + 20) break;
                 ctx.strokeStyle = '#1e1e28';
-                ctx.beginPath(); ctx.moveTo(sx, RULER_H - 5); ctx.lineTo(sx, RULER_H); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(sx, rh - 5); ctx.lineTo(sx, rh); ctx.stroke();
             }
         }
     }
 }
 
-function drawVoiceTrack(ctx, w) {
-    const y0 = RULER_H;
+function drawVoiceTrack(ctx, w, th) {
+    const y0 = th.RULER_H;
+    const vh = th.VOICE_H;
     const vl = viewLeft(), vr = viewRight();
     ctx.fillStyle = '#111116';
-    ctx.fillRect(vl, y0, vr - vl, VOICE_H);
+    ctx.fillRect(vl, y0, vr - vl, vh);
     ctx.strokeStyle = '#2a2a36';
-    ctx.beginPath(); ctx.moveTo(vl, y0 + VOICE_H - 0.5); ctx.lineTo(vr, y0 + VOICE_H - 0.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(vl, y0 + vh - 0.5); ctx.lineTo(vr, y0 + vh - 0.5); ctx.stroke();
 
     // Waveform — only draw visible bars
     if (waveformPeaks.length) {
         const peaksPerSec = 200;
-        const mid = y0 + VOICE_H / 2;
-        const maxH = VOICE_H / 2 - 6;
+        const mid = y0 + vh / 2;
+        const maxH = vh / 2 - 6;
 
         const grad = ctx.createLinearGradient(0, mid - maxH, 0, mid + maxH);
         grad.addColorStop(0, 'rgba(165,94,234,0.8)');
@@ -1345,9 +1396,9 @@ function drawVoiceTrack(ctx, w) {
             if (idx2 < waveformPeaks.length && idx2 !== idx) {
                 peak = (peak + waveformPeaks[idx2]) / 2;
             }
-            const h = Math.max(1, peak * maxH);
+            const bh = Math.max(1, peak * maxH);
             ctx.fillStyle = grad;
-            ctx.fillRect(px, mid - h, barW, h * 2);
+            ctx.fillRect(px, mid - bh, barW, bh * 2);
         }
 
         ctx.strokeStyle = 'rgba(78,205,196,0.2)';
@@ -1365,29 +1416,30 @@ function drawVoiceTrack(ctx, w) {
         const ww = x2 - x1;
 
         ctx.strokeStyle = 'rgba(78,205,196,0.1)';
-        ctx.beginPath(); ctx.moveTo(x1, y0); ctx.lineTo(x1, y0 + VOICE_H); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x1, y0); ctx.lineTo(x1, y0 + vh); ctx.stroke();
 
         if (i === currentWordIdx) {
             ctx.fillStyle = 'rgba(78,205,196,0.15)';
-            ctx.fillRect(x1, y0, ww, VOICE_H);
+            ctx.fillRect(x1, y0, ww, vh);
         }
 
         if (ww > 20) {
             ctx.font = '10px system-ui';
             ctx.fillStyle = i === currentWordIdx ? '#4ecdc4' : 'rgba(240,240,244,0.5)';
             ctx.textAlign = 'center';
-            ctx.fillText(word.word, x1 + ww / 2, y0 + VOICE_H - 6, ww - 4);
+            ctx.fillText(word.word, x1 + ww / 2, y0 + vh - 6, ww - 4);
         }
     }
 }
 
-function drawPitchTrack(ctx, w) {
-    const y0 = RULER_H + VOICE_H;
+function drawPitchTrack(ctx, w, th) {
+    const y0 = th.RULER_H + th.VOICE_H;
+    const ph = th.PITCH_H;
     const vl = viewLeft(), vr = viewRight();
     ctx.fillStyle = '#0e0e13';
-    ctx.fillRect(vl, y0, vr - vl, PITCH_H);
+    ctx.fillRect(vl, y0, vr - vl, ph);
     ctx.strokeStyle = '#2a2a36';
-    ctx.beginPath(); ctx.moveTo(vl, y0 + PITCH_H - 0.5); ctx.lineTo(vr, y0 + PITCH_H - 0.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(vl, y0 + ph - 0.5); ctx.lineTo(vr, y0 + ph - 0.5); ctx.stroke();
 
     for (const drop of S.pitchDrops) {
         const ws = S.words[drop.startIdx];
@@ -1398,29 +1450,30 @@ function drawPitchTrack(ctx, w) {
         if (x2 < vl || x1 > vr) continue; // skip off-screen
         const depth = Math.abs(drop.semitones) / 8;
 
-        const grad = ctx.createLinearGradient(x1, y0, x1, y0 + PITCH_H);
+        const grad = ctx.createLinearGradient(x1, y0, x1, y0 + ph);
         grad.addColorStop(0, `rgba(165,94,234,${0.15 + depth * 0.35})`);
         grad.addColorStop(1, `rgba(165,94,234,${0.05 + depth * 0.15})`);
         ctx.fillStyle = grad;
-        ctx.fillRect(x1, y0, x2 - x1, PITCH_H);
+        ctx.fillRect(x1, y0, x2 - x1, ph);
 
         ctx.strokeStyle = 'rgba(165,94,234,0.6)';
         ctx.lineWidth = 1;
-        ctx.strokeRect(x1 + 0.5, y0 + 0.5, x2 - x1 - 1, PITCH_H - 1);
+        ctx.strokeRect(x1 + 0.5, y0 + 0.5, x2 - x1 - 1, ph - 1);
 
         const mid = (x1 + x2) / 2;
         ctx.font = 'bold 10px system-ui';
         ctx.fillStyle = '#a55eea';
         ctx.textAlign = 'center';
-        ctx.fillText(`${drop.semitones} st`, mid, y0 + PITCH_H / 2 + 4);
+        ctx.fillText(`${drop.semitones} st`, mid, y0 + ph / 2 + 4);
     }
 }
 
-function drawSfxTrack(ctx, w) {
-    const y0 = RULER_H + VOICE_H + PITCH_H;
+function drawSfxTrack(ctx, w, th) {
+    const y0 = th.RULER_H + th.VOICE_H + th.PITCH_H;
+    const sh = th.SFX_H;
     const vl = viewLeft(), vr = viewRight();
     ctx.fillStyle = '#0d0d12';
-    ctx.fillRect(vl, y0, vr - vl, SFX_H);
+    ctx.fillRect(vl, y0, vr - vl, sh);
 
     for (const p of S.sfxPlacements) {
         const word = S.words[p.wordIndex];
@@ -1431,28 +1484,29 @@ function drawSfxTrack(ctx, w) {
 
         ctx.fillStyle = p.sfxColor || '#ff4757';
         ctx.globalAlpha = 0.25;
-        ctx.fillRect(x, y0 + 4, chipW, SFX_H - 8);
+        ctx.fillRect(x, y0 + 3, chipW, sh - 6);
         ctx.globalAlpha = 1;
 
         ctx.strokeStyle = p.sfxColor || '#ff4757';
         ctx.lineWidth = 1;
-        ctx.strokeRect(x + 0.5, y0 + 4.5, chipW - 1, SFX_H - 9);
+        ctx.strokeRect(x + 0.5, y0 + 3.5, chipW - 1, sh - 7);
 
         if (S.isPlaying && S.currentTime >= word.start && S.currentTime < word.start + 0.3) {
             ctx.fillStyle = p.sfxColor || '#ff4757';
             ctx.globalAlpha = 0.4;
-            ctx.fillRect(x, y0 + 4, chipW, SFX_H - 8);
+            ctx.fillRect(x, y0 + 3, chipW, sh - 6);
             ctx.globalAlpha = 1;
         }
 
         ctx.font = '9px system-ui';
         ctx.fillStyle = p.sfxColor || '#ff4757';
         ctx.textAlign = 'left';
-        ctx.fillText(p.sfxName || p.sfxId, x + 4, y0 + SFX_H / 2 + 3, chipW - 8);
+        ctx.fillText(p.sfxName || p.sfxId, x + 4, y0 + sh / 2 + 3, chipW - 8);
     }
 }
 
-function drawMarkers(ctx) {
+function drawMarkers(ctx, th) {
+    const totalH = th.RULER_H + th.VOICE_H + th.PITCH_H + th.SFX_H;
     const vl = viewLeft(), vr = viewRight();
     for (const m of S.markers) {
         const x = timeToX(m.time);
@@ -1470,14 +1524,14 @@ function drawMarkers(ctx) {
 
         ctx.strokeStyle = m.color || '#ffa502';
         ctx.globalAlpha = 0.3;
-        ctx.beginPath(); ctx.moveTo(x, 16); ctx.lineTo(x, CANVAS_H); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, 16); ctx.lineTo(x, totalH); ctx.stroke();
         ctx.globalAlpha = 1;
 
         if (m.label) {
             ctx.font = '9px system-ui';
             ctx.fillStyle = m.color || '#ffa502';
             ctx.textAlign = 'center';
-            ctx.fillText(m.label, x, RULER_H - 2);
+            ctx.fillText(m.label, x, th.RULER_H - 2);
         }
     }
 }
@@ -2431,8 +2485,10 @@ async function init() {
         renderAll();
         fitToView();
 
-        // Hide loading
-        document.getElementById('loading').classList.add('hidden');
+        // Hide loading with a slight delay so layout settles
+        setTimeout(() => {
+            document.getElementById('loading').classList.add('hidden');
+        }, 100);
         toast(`Loaded ${S.words.length} words, ${S.pitchDrops.length} pitch drops`, 'success');
 
     } catch (e) {
