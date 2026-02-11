@@ -1,0 +1,29 @@
+{
+  "title": "Alarm Clocks Are War Crimes",
+  "topic": "alarm clocks being unreasonably violent",
+  "hook": "Why does nobody talk about how alarm clocks are genuinely the most violent invention ever created.",
+  "beats": [
+    {"line": "Why does nobody talk about how alarm clocks are genuinely the most violent invention ever created.", "type": "hook", "estimated_seconds": 4.5, "energy": "high"},
+    {"line": "Like you are in a COMA. You are gone. You are visiting your ancestors in the spirit realm.", "type": "observation", "estimated_seconds": 4.0, "energy": "medium"},
+    {"line": "And then this little device on your nightstand decides to commit a literal war crime on your eardrums at 6 AM.", "type": "escalation", "estimated_seconds": 5.0, "energy": "high"},
+    {"line": "The way my soul leaves my body every single morning is not normal.", "type": "joke", "estimated_seconds": 3.5, "energy": "high"},
+    {"line": "Like I have to emotionally recover from waking up.", "type": "escalation", "estimated_seconds": 2.5, "energy": "medium"},
+    {"line": "And don't even get me started on the snooze button because that is just you voluntarily signing up for emotional damage every nine minutes.", "type": "escalation", "estimated_seconds": 6.0, "energy": "high"},
+    {"line": "The iPhone alarm sound should be classified as a federal offense.", "type": "punchline", "estimated_seconds": 3.5, "energy": "high"},
+    {"line": "I am genuinely not okay.", "type": "wrap", "estimated_seconds": 2.0, "energy": "low"}
+  ],
+  "final_punchline": "I am genuinely not okay.",
+  "full_script": "Why does nobody talk about how alarm clocks are genuinely the most violent invention ever created. Like you are in a COMA. You are gone. You are visiting your ancestors in the spirit realm. And then this little device on your nightstand decides to commit a literal war crime on your eardrums at 6 AM. The way my soul leaves my body every single morning is not normal. Like I have to emotionally recover from waking up. And don't even get me started on the snooze button because that is just you voluntarily signing up for emotional damage every nine minutes. The iPhone alarm sound should be classified as a federal offense. I am genuinely not okay.",
+  "word_count": 117,
+  "estimated_duration_seconds": 34.0,
+  "tone": "unhinged",
+  "target_audience": "Gen Z / young millennials",
+  "hashtag_suggestions": ["#alarmclock", "#morningrant", "#relatable", "#genzcontent", "#fyp"],
+  "pitch_drops": [
+    {"phrase": "war crime", "semitones": -4},
+    {"phrase": "soul leaves my body", "semitones": -4},
+    {"phrase": "emotional damage", "semitones": -5},
+    {"phrase": "federal offense", "semitones": -5},
+    {"phrase": "not okay", "semitones": -6}
+  ]
+}

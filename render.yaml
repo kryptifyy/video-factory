@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: timeline-editor
+    runtime: python
+    buildCommand: ""
+    startCommand: python timeline_editor.py
+    envVars:
+      - key: PORT
+        value: 8080

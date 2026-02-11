@@ -1,0 +1,32 @@
+{
+  "sfx_placements": [],
+  "pitch_drops": [
+    {
+      "startIdx": 47,
+      "endIdx": 47,
+      "semitones": -4
+    },
+    {
+      "startIdx": 58,
+      "endIdx": 61,
+      "semitones": -4
+    },
+    {
+      "startIdx": 96,
+      "endIdx": 97,
+      "semitones": -5
+    },
+    {
+      "startIdx": 110,
+      "endIdx": 111,
+      "semitones": -5
+    },
+    {
+      "startIdx": 115,
+      "endIdx": 116,
+      "semitones": -6
+    }
+  ],
+  "markers": [],
+  "speed": 1.2
+}

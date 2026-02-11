@@ -1,0 +1,8 @@
+{
+  "name": "Timeline Editor",
+  "short_name": "Timeline",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0c0f",
+  "theme_color": "#0c0c0f"
+}

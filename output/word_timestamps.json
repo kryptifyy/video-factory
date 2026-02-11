@@ -1,0 +1,587 @@
+[
+  {
+    "word": "Why",
+    "start": 0.1,
+    "end": 0.33
+  },
+  {
+    "word": "does",
+    "start": 0.39,
+    "end": 0.647
+  },
+  {
+    "word": "nobody",
+    "start": 0.707,
+    "end": 1.017
+  },
+  {
+    "word": "talk",
+    "start": 1.077,
+    "end": 1.334
+  },
+  {
+    "word": "about",
+    "start": 1.394,
+    "end": 1.677
+  },
+  {
+    "word": "how",
+    "start": 1.737,
+    "end": 1.967
+  },
+  {
+    "word": "alarm",
+    "start": 2.027,
+    "end": 2.31
+  },
+  {
+    "word": "clocks",
+    "start": 2.37,
+    "end": 2.68
+  },
+  {
+    "word": "are",
+    "start": 2.74,
+    "end": 2.97
+  },
+  {
+    "word": "genuinely",
+    "start": 3.03,
+    "end": 3.42
+  },
+  {
+    "word": "the",
+    "start": 3.48,
+    "end": 3.71
+  },
+  {
+    "word": "most",
+    "start": 3.77,
+    "end": 4.027
+  },
+  {
+    "word": "violent",
+    "start": 4.087,
+    "end": 4.424
+  },
+  {
+    "word": "invention",
+    "start": 4.484,
+    "end": 4.874
+  },
+  {
+    "word": "ever",
+    "start": 4.934,
+    "end": 5.191
+  },
+  {
+    "word": "created.",
+    "start": 5.251,
+    "end": 5.614
+  },
+  {
+    "word": "Like",
+    "start": 5.794,
+    "end": 6.051
+  },
+  {
+    "word": "you",
+    "start": 6.111,
+    "end": 6.341
+  },
+  {
+    "word": "are",
+    "start": 6.401,
+    "end": 6.631
+  },
+  {
+    "word": "in",
+    "start": 6.691,
+    "end": 6.921
+  },
+  {
+    "word": "a",
+    "start": 6.981,
+    "end": 7.211
+  },
+  {
+    "word": "COMA.",
+    "start": 7.271,
+    "end": 7.554
+  },
+  {
+    "word": "You",
+    "start": 7.734,
+    "end": 7.964
+  },
+  {
+    "word": "are",
+    "start": 8.024,
+    "end": 8.254
+  },
+  {
+    "word": "gone.",
+    "start": 8.314,
+    "end": 8.597
+  },
+  {
+    "word": "You",
+    "start": 8.777,
+    "end": 9.007
+  },
+  {
+    "word": "are",
+    "start": 9.067,
+    "end": 9.297
+  },
+  {
+    "word": "visiting",
+    "start": 9.357,
+    "end": 9.72
+  },
+  {
+    "word": "your",
+    "start": 9.78,
+    "end": 10.037
+  },
+  {
+    "word": "ancestors",
+    "start": 10.097,
+    "end": 10.487
+  },
+  {
+    "word": "in",
+    "start": 10.547,
+    "end": 10.777
+  },
+  {
+    "word": "the",
+    "start": 10.837,
+    "end": 11.067
+  },
+  {
+    "word": "spirit",
+    "start": 11.127,
+    "end": 11.437
+  },
+  {
+    "word": "realm.",
+    "start": 11.497,
+    "end": 11.807
+  },
+  {
+    "word": "And",
+    "start": 11.987,
+    "end": 12.217
+  },
+  {
+    "word": "then",
+    "start": 12.277,
+    "end": 12.534
+  },
+  {
+    "word": "this",
+    "start": 12.594,
+    "end": 12.851
+  },
+  {
+    "word": "little",
+    "start": 12.911,
+    "end": 13.221
+  },
+  {
+    "word": "device",
+    "start": 13.281,
+    "end": 13.591
+  },
+  {
+    "word": "on",
+    "start": 13.651,
+    "end": 13.881
+  },
+  {
+    "word": "your",
+    "start": 13.941,
+    "end": 14.198
+  },
+  {
+    "word": "nightstand",
+    "start": 14.258,
+    "end": 14.675
+  },
+  {
+    "word": "decides",
+    "start": 14.735,
+    "end": 15.072
+  },
+  {
+    "word": "to",
+    "start": 15.132,
+    "end": 15.362
+  },
+  {
+    "word": "commit",
+    "start": 15.422,
+    "end": 15.732
+  },
+  {
+    "word": "a",
+    "start": 15.792,
+    "end": 16.022
+  },
+  {
+    "word": "literal",
+    "start": 16.082,
+    "end": 16.419
+  },
+  {
+    "word": "war",
+    "start": 16.479,
+    "end": 16.709
+  },
+  {
+    "word": "crime",
+    "start": 16.769,
+    "end": 17.052
+  },
+  {
+    "word": "on",
+    "start": 17.112,
+    "end": 17.342
+  },
+  {
+    "word": "your",
+    "start": 17.402,
+    "end": 17.659
+  },
+  {
+    "word": "eardrums",
+    "start": 17.719,
+    "end": 18.082
+  },
+  {
+    "word": "at",
+    "start": 18.142,
+    "end": 18.372
+  },
+  {
+    "word": "6",
+    "start": 18.432,
+    "end": 18.662
+  },
+  {
+    "word": "AM.",
+    "start": 18.722,
+    "end": 18.952
+  },
+  {
+    "word": "The",
+    "start": 19.132,
+    "end": 19.362
+  },
+  {
+    "word": "way",
+    "start": 19.422,
+    "end": 19.652
+  },
+  {
+    "word": "my",
+    "start": 19.712,
+    "end": 19.942
+  },
+  {
+    "word": "soul",
+    "start": 20.002,
+    "end": 20.259
+  },
+  {
+    "word": "leaves",
+    "start": 20.319,
+    "end": 20.629
+  },
+  {
+    "word": "my",
+    "start": 20.689,
+    "end": 20.919
+  },
+  {
+    "word": "body",
+    "start": 20.979,
+    "end": 21.236
+  },
+  {
+    "word": "every",
+    "start": 21.296,
+    "end": 21.579
+  },
+  {
+    "word": "single",
+    "start": 21.639,
+    "end": 21.949
+  },
+  {
+    "word": "morning",
+    "start": 22.009,
+    "end": 22.346
+  },
+  {
+    "word": "is",
+    "start": 22.406,
+    "end": 22.636
+  },
+  {
+    "word": "not",
+    "start": 22.696,
+    "end": 22.926
+  },
+  {
+    "word": "normal.",
+    "start": 22.986,
+    "end": 23.323
+  },
+  {
+    "word": "Like",
+    "start": 23.503,
+    "end": 23.76
+  },
+  {
+    "word": "I",
+    "start": 23.82,
+    "end": 24.05
+  },
+  {
+    "word": "have",
+    "start": 24.11,
+    "end": 24.367
+  },
+  {
+    "word": "to",
+    "start": 24.427,
+    "end": 24.657
+  },
+  {
+    "word": "emotionally",
+    "start": 24.717,
+    "end": 25.16
+  },
+  {
+    "word": "recover",
+    "start": 25.22,
+    "end": 25.557
+  },
+  {
+    "word": "from",
+    "start": 25.617,
+    "end": 25.874
+  },
+  {
+    "word": "waking",
+    "start": 25.934,
+    "end": 26.244
+  },
+  {
+    "word": "up.",
+    "start": 26.304,
+    "end": 26.534
+  },
+  {
+    "word": "And",
+    "start": 26.714,
+    "end": 26.944
+  },
+  {
+    "word": "don't",
+    "start": 27.004,
+    "end": 27.287
+  },
+  {
+    "word": "even",
+    "start": 27.347,
+    "end": 27.604
+  },
+  {
+    "word": "get",
+    "start": 27.664,
+    "end": 27.894
+  },
+  {
+    "word": "me",
+    "start": 27.954,
+    "end": 28.184
+  },
+  {
+    "word": "started",
+    "start": 28.244,
+    "end": 28.581
+  },
+  {
+    "word": "on",
+    "start": 28.641,
+    "end": 28.871
+  },
+  {
+    "word": "the",
+    "start": 28.931,
+    "end": 29.161
+  },
+  {
+    "word": "snooze",
+    "start": 29.221,
+    "end": 29.531
+  },
+  {
+    "word": "button",
+    "start": 29.591,
+    "end": 29.901
+  },
+  {
+    "word": "because",
+    "start": 29.961,
+    "end": 30.298
+  },
+  {
+    "word": "that",
+    "start": 30.358,
+    "end": 30.615
+  },
+  {
+    "word": "is",
+    "start": 30.675,
+    "end": 30.905
+  },
+  {
+    "word": "just",
+    "start": 30.965,
+    "end": 31.222
+  },
+  {
+    "word": "you",
+    "start": 31.282,
+    "end": 31.512
+  },
+  {
+    "word": "voluntarily",
+    "start": 31.572,
+    "end": 32.015
+  },
+  {
+    "word": "signing",
+    "start": 32.075,
+    "end": 32.412
+  },
+  {
+    "word": "up",
+    "start": 32.472,
+    "end": 32.702
+  },
+  {
+    "word": "for",
+    "start": 32.762,
+    "end": 32.992
+  },
+  {
+    "word": "emotional",
+    "start": 33.052,
+    "end": 33.442
+  },
+  {
+    "word": "damage",
+    "start": 33.502,
+    "end": 33.812
+  },
+  {
+    "word": "every",
+    "start": 33.872,
+    "end": 34.155
+  },
+  {
+    "word": "nine",
+    "start": 34.215,
+    "end": 34.472
+  },
+  {
+    "word": "minutes.",
+    "start": 34.532,
+    "end": 34.895
+  },
+  {
+    "word": "The",
+    "start": 35.075,
+    "end": 35.305
+  },
+  {
+    "word": "iPhone",
+    "start": 35.365,
+    "end": 35.675
+  },
+  {
+    "word": "alarm",
+    "start": 35.735,
+    "end": 36.018
+  },
+  {
+    "word": "sound",
+    "start": 36.078,
+    "end": 36.361
+  },
+  {
+    "word": "should",
+    "start": 36.421,
+    "end": 36.731
+  },
+  {
+    "word": "be",
+    "start": 36.791,
+    "end": 37.021
+  },
+  {
+    "word": "classified",
+    "start": 37.081,
+    "end": 37.498
+  },
+  {
+    "word": "as",
+    "start": 37.558,
+    "end": 37.788
+  },
+  {
+    "word": "a",
+    "start": 37.848,
+    "end": 38.078
+  },
+  {
+    "word": "federal",
+    "start": 38.138,
+    "end": 38.475
+  },
+  {
+    "word": "offense.",
+    "start": 38.535,
+    "end": 38.898
+  },
+  {
+    "word": "I",
+    "start": 39.078,
+    "end": 39.308
+  },
+  {
+    "word": "am",
+    "start": 39.368,
+    "end": 39.598
+  },
+  {
+    "word": "genuinely",
+    "start": 39.658,
+    "end": 40.048
+  },
+  {
+    "word": "not",
+    "start": 40.108,
+    "end": 40.338
+  },
+  {
+    "word": "okay.",
+    "start": 40.398,
+    "end": 40.681
+  }
+]

@@ -1,0 +1,2419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0c0c0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
+<title>Timeline Editor</title>
+<style>
+/* ===== Reset & Variables ===== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+    --bg-0: #0c0c0f;
+    --bg-1: #131318;
+    --bg-2: #1a1a22;
+    --bg-3: #24242e;
+    --bg-4: #2e2e3a;
+    --border: #2a2a36;
+    --text-0: #f0f0f4;
+    --text-1: #b8b8c8;
+    --text-2: #7a7a8e;
+    --text-3: #4e4e60;
+    --accent: #4ecdc4;
+    --accent-dim: rgba(78,205,196,0.15);
+    --accent-mid: rgba(78,205,196,0.5);
+    --red: #ff4757;
+    --orange: #ffa502;
+    --green: #2ed573;
+    --purple: #a55eea;
+    --purple-dim: rgba(165,94,234,0.2);
+    --radius: 8px;
+    --radius-sm: 5px;
+    --shadow: 0 4px 20px rgba(0,0,0,0.5);
+    --transition: 0.15s ease;
+}
+html, body { height: 100%; }
+body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background: var(--bg-0);
+    color: var(--text-0);
+    overflow: hidden;
+    user-select: none;
+}
+input[type=range] { accent-color: var(--accent); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+button { cursor: pointer; font-family: inherit; }
+
+/* ===== Entrance Animations ===== */
+@keyframes slideDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideLeft { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideRight { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes fadeScale { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+@keyframes chipIn { from { opacity: 0; transform: scale(0.5) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+/* ===== Layout ===== */
+.app { display: flex; flex-direction: column; height: 100vh; }
+
+/* ===== Nav ===== */
+.nav {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 44px; padding: 0 16px;
+    background: var(--bg-1); border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    animation: slideDown 0.5s ease both;
+}
+.nav-section { display: flex; align-items: center; gap: 8px; }
+.nav-logo {
+    font-size: 14px; font-weight: 700; color: var(--accent);
+    letter-spacing: 0.5px;
+}
+.nav-btn {
+    background: var(--bg-3); border: 1px solid var(--border); color: var(--text-1);
+    padding: 4px 10px; border-radius: var(--radius-sm); font-size: 13px;
+    transition: all var(--transition);
+}
+.nav-btn:hover { background: var(--bg-4); color: var(--text-0); }
+.nav-btn:disabled { opacity: 0.3; cursor: default; }
+.nav-btn.primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+.nav-btn.primary:hover { filter: brightness(1.1); }
+.nav-btn.danger { background: var(--red); color: #fff; border-color: var(--red); }
+.undo-depth {
+    font-size: 11px; color: var(--text-3); min-width: 20px; text-align: center;
+}
+.nav-time {
+    font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums;
+}
+
+/* ===== Main ===== */
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* ===== Transcript Sidebar ===== */
+.sidebar {
+    width: 260px; min-width: 0; max-width: 360px;
+    background: var(--bg-1); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; flex-shrink: 0;
+    animation: slideLeft 0.6s ease 0.2s both;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s ease, opacity 0.3s ease;
+    overflow: hidden;
+}
+.sidebar.collapsed {
+    width: 0; min-width: 0; border-right: none; opacity: 0;
+}
+.panel-header {
+    padding: 10px 14px; font-size: 12px; font-weight: 600;
+    color: var(--text-2); text-transform: uppercase; letter-spacing: 1px;
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.panel-header .close-btn {
+    background: none; border: none; color: var(--text-3); font-size: 16px;
+    padding: 2px 6px; border-radius: 4px; line-height: 1;
+    transition: all 0.2s ease;
+}
+.panel-header .close-btn:hover { color: var(--text-0); background: var(--bg-3); }
+.sidebar-toggle {
+    display: none; position: absolute; left: 8px; top: 52px; z-index: 10;
+    background: var(--bg-2); border: 1px solid var(--border); color: var(--accent);
+    padding: 6px 8px; border-radius: 0 6px 6px 0; font-size: 14px;
+    transition: all 0.3s ease; box-shadow: 2px 0 8px rgba(0,0,0,0.3);
+    animation: slideLeft 0.3s ease both;
+}
+.sidebar-toggle:hover { background: var(--bg-3); }
+.sidebar-toggle.visible { display: block; }
+.transcript-words {
+    flex: 1; overflow-y: auto; padding: 10px;
+    display: flex; flex-wrap: wrap; align-content: flex-start; gap: 4px;
+}
+.word-chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 4px 8px; border-radius: var(--radius-sm);
+    background: var(--bg-2); border: 1px solid transparent;
+    font-size: 12px; color: var(--text-1); cursor: pointer;
+    transition: all var(--transition); position: relative;
+    line-height: 1.3;
+}
+.word-chip:hover { background: var(--bg-3); color: var(--text-0); border-color: var(--border); }
+.word-chip.current { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+.word-chip.selected { background: var(--bg-3); border-color: var(--accent-mid); }
+.word-chip.has-pitch { border-color: var(--purple); }
+.word-chip.has-sfx .sfx-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+}
+.word-chip .pitch-badge {
+    font-size: 9px; color: var(--purple); font-weight: 700; margin-left: 2px;
+}
+.word-chip .sfx-badge {
+    font-size: 9px; font-weight: 600; margin-left: 2px; max-width: 50px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ===== Center Column ===== */
+.center { flex: 1; display: flex; flex-direction: column; overflow: hidden; animation: fadeScale 0.5s ease 0.3s both; }
+
+/* ===== Timeline Area ===== */
+.timeline-area {
+    display: flex; flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-1);
+    animation: slideDown 0.6s ease 0.4s both;
+}
+.timeline-labels {
+    width: 60px; flex-shrink: 0; background: var(--bg-1);
+    border-right: 1px solid var(--border);
+}
+.track-label {
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: var(--text-3); text-transform: uppercase;
+    letter-spacing: 0.5px; border-bottom: 1px solid var(--border);
+}
+.timeline-scroll {
+    flex: 1; overflow-x: auto; overflow-y: hidden;
+    position: relative;
+}
+#timeline-canvas { display: block; }
+
+/* ===== Playback Bar ===== */
+.playback-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px; gap: 16px;
+    background: var(--bg-2); border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    animation: slideUp 0.5s ease 0.5s both;
+}
+.pb-section { display: flex; align-items: center; gap: 8px; }
+.pb-btn {
+    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+    background: var(--bg-3); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text-1); font-size: 14px; transition: all var(--transition);
+}
+.pb-btn:hover { background: var(--bg-4); color: var(--text-0); }
+.pb-btn.play-btn { width: 38px; height: 38px; font-size: 16px; }
+.pb-btn.play-btn.playing { background: var(--accent); color: #000; border-color: var(--accent); }
+.pb-time {
+    font-size: 13px; color: var(--text-1); font-variant-numeric: tabular-nums;
+    min-width: 110px;
+}
+.pb-time .sep { color: var(--text-3); margin: 0 4px; }
+.pb-label { font-size: 11px; color: var(--text-3); }
+.pb-slider { width: 80px; height: 4px; }
+.pb-value { font-size: 12px; color: var(--text-2); min-width: 32px; text-align: center; }
+.zoom-section { display: flex; align-items: center; gap: 6px; }
+.zoom-btn {
+    width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+    background: var(--bg-3); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text-2); font-size: 16px; font-weight: 700;
+    transition: all var(--transition);
+}
+.zoom-btn:hover { background: var(--bg-4); color: var(--text-0); }
+.fit-btn {
+    padding: 3px 8px; font-size: 11px;
+    background: var(--bg-3); border: 1px solid var(--border); border-radius: 4px;
+    color: var(--text-2); transition: all var(--transition);
+}
+.fit-btn:hover { background: var(--bg-4); color: var(--text-0); }
+
+/* ===== Bottom Panel ===== */
+.bottom-panel {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--bg-1);
+    animation: slideUp 0.5s ease 0.6s both;
+}
+.panel-tabs {
+    display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.panel-tab {
+    padding: 8px 18px; font-size: 12px; font-weight: 600;
+    color: var(--text-3); background: transparent; border: none;
+    border-bottom: 2px solid transparent;
+    transition: all var(--transition); text-transform: uppercase; letter-spacing: 0.5px;
+}
+.panel-tab:hover { color: var(--text-1); }
+.panel-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-content { flex: 1; overflow-y: auto; padding: 10px 14px; display: none; }
+.tab-content.active { display: block; animation: fadeScale 0.3s ease both; }
+
+/* ===== SFX Grid ===== */
+.sfx-empty { color: var(--text-3); font-size: 13px; padding: 20px 0; text-align: center; }
+.sfx-category { margin-bottom: 12px; }
+.sfx-category-label { font-size: 11px; font-weight: 600; color: var(--text-3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.sfx-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.sfx-card {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px; border-radius: var(--radius-sm);
+    background: var(--bg-2); border: 1px solid var(--border);
+    cursor: grab; font-size: 12px; color: var(--text-1);
+    transition: all var(--transition);
+}
+.sfx-card:hover { background: var(--bg-3); border-color: var(--bg-4); }
+.sfx-card:active { cursor: grabbing; }
+.sfx-card .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sfx-card .name { white-space: nowrap; }
+
+/* ===== Export Panel ===== */
+.export-stats {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px; margin-bottom: 16px;
+}
+.stat-card {
+    background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 12px; text-align: center;
+}
+.stat-value { font-size: 22px; font-weight: 700; color: var(--accent); }
+.stat-label { font-size: 10px; color: var(--text-3); text-transform: uppercase; margin-top: 2px; }
+.export-list { margin-bottom: 12px; }
+.export-list-title { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.export-item {
+    font-size: 12px; color: var(--text-1); padding: 4px 8px;
+    background: var(--bg-2); border-radius: 4px; margin-bottom: 3px;
+}
+.generate-section { margin-top: 16px; }
+.generate-btn {
+    padding: 10px 24px; font-size: 14px; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), #45b7aa);
+    color: #000; border: none; border-radius: var(--radius);
+    cursor: pointer; transition: all var(--transition);
+}
+.generate-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.generate-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+.generate-status { font-size: 12px; color: var(--text-2); margin-top: 8px; }
+
+/* ===== Popup ===== */
+.popup-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0); z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: background 0.3s ease, opacity 0.25s ease;
+}
+.popup-overlay.visible {
+    opacity: 1; pointer-events: auto;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+}
+.popup {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px; min-width: 300px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(78,205,196,0.05);
+    transform: scale(0.9) translateY(10px);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+}
+.popup-overlay.visible .popup {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+.popup-title {
+    font-size: 15px; font-weight: 700; color: var(--text-0); margin-bottom: 4px;
+}
+.popup-subtitle {
+    font-size: 12px; color: var(--text-2); margin-bottom: 14px;
+    padding-bottom: 10px; border-bottom: 1px solid var(--border);
+}
+.popup-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.popup-row label { font-size: 12px; color: var(--text-2); min-width: 70px; }
+.popup-row input[type=range] { flex: 1; }
+.popup-row .value {
+    font-size: 14px; color: var(--text-0); min-width: 40px; text-align: right;
+    font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.popup-presets { display: flex; gap: 6px; margin-bottom: 14px; }
+.preset-btn {
+    padding: 6px 12px; font-size: 11px; font-weight: 600;
+    background: var(--bg-3); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-1); transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.preset-btn:hover { background: var(--bg-4); color: var(--text-0); transform: translateY(-1px); }
+.preset-btn:active { transform: translateY(0) scale(0.97); }
+.preset-btn.active {
+    background: var(--purple-dim); border-color: var(--purple); color: var(--purple);
+    box-shadow: 0 0 12px rgba(165,94,234,0.2);
+}
+.popup-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.popup-actions button {
+    padding: 8px 16px; font-size: 12px; font-weight: 600;
+    border-radius: 6px; border: 1px solid var(--border);
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.popup-actions button:active { transform: scale(0.95); }
+.btn-save {
+    background: var(--accent); color: #000; border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(78,205,196,0.3);
+}
+.btn-save:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(78,205,196,0.4); }
+.btn-remove { background: transparent; color: var(--red); border-color: var(--red); }
+.btn-remove:hover { background: rgba(255,71,87,0.1); transform: translateY(-1px); }
+.btn-cancel { background: var(--bg-3); color: var(--text-1); }
+.btn-cancel:hover { background: var(--bg-4); transform: translateY(-1px); }
+
+/* ===== Toast ===== */
+.toast-container {
+    position: fixed; top: 54px; right: 16px; z-index: 200;
+    display: flex; flex-direction: column; gap: 8px;
+}
+.toast {
+    padding: 10px 16px; border-radius: 8px;
+    font-size: 12px; font-weight: 500;
+    animation: toastIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), toastOut 0.4s ease 2.5s forwards;
+    max-width: 320px;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.toast.success { background: rgba(46,213,115,0.15); color: var(--green); border: 1px solid rgba(46,213,115,0.3); }
+.toast.error { background: rgba(255,71,87,0.15); color: var(--red); border: 1px solid rgba(255,71,87,0.3); }
+.toast.info { background: rgba(78,205,196,0.15); color: var(--accent); border: 1px solid rgba(78,205,196,0.3); }
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(60px) scale(0.8); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes toastOut {
+    from { opacity: 1; transform: translateX(0) scale(1); }
+    to { opacity: 0; transform: translateX(30px) scale(0.9); }
+}
+
+/* ===== Loading ===== */
+.loading-overlay {
+    position: fixed; inset: 0; background: var(--bg-0);
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px;
+    z-index: 300; transition: opacity 0.5s ease;
+}
+.loading-overlay.hidden { opacity: 0; pointer-events: none; }
+.loading-text { color: var(--text-2); font-size: 14px; animation: pulse 1.5s ease infinite; }
+@keyframes pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+.loading-spinner {
+    width: 32px; height: 32px; border: 3px solid var(--bg-4);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle;
+    margin-right: 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Drag feedback ===== */
+.word-chip.drag-over {
+    background: var(--accent-dim); border-color: var(--accent);
+    transform: scale(1.05);
+    box-shadow: 0 0 12px rgba(78,205,196,0.3);
+}
+
+/* ===== Audio Visualizer ===== */
+.visualizer-bar {
+    height: 48px; flex-shrink: 0;
+    background: var(--bg-0);
+    border-bottom: 1px solid var(--border);
+    position: relative; overflow: hidden;
+    animation: fadeScale 0.5s ease 0.45s both;
+}
+#visualizer-canvas { width: 100%; height: 100%; display: block; }
+
+/* ===== Smooth Interactions ===== */
+.nav-btn, .pb-btn, .zoom-btn, .fit-btn, .panel-tab, .generate-btn {
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.nav-btn:active, .pb-btn:active, .zoom-btn:active, .fit-btn:active { transform: scale(0.93); }
+.pb-btn.play-btn:hover { transform: scale(1.08); }
+.pb-btn.play-btn:active { transform: scale(0.95); }
+.pb-btn.play-btn.playing {
+    box-shadow: 0 0 16px rgba(78,205,196,0.4);
+    animation: playGlow 2s ease infinite;
+}
+@keyframes playGlow {
+    0%, 100% { box-shadow: 0 0 10px rgba(78,205,196,0.3); }
+    50% { box-shadow: 0 0 20px rgba(78,205,196,0.5); }
+}
+
+.word-chip {
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.word-chip:hover { transform: translateY(-1px); }
+.word-chip:active { transform: scale(0.95); }
+.word-chip.current {
+    animation: wordPulse 1s ease infinite;
+    box-shadow: 0 0 10px rgba(78,205,196,0.2);
+}
+@keyframes wordPulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(78,205,196,0.15); }
+    50% { box-shadow: 0 0 14px rgba(78,205,196,0.35); }
+}
+.word-chip.has-pitch {
+    box-shadow: 0 0 8px rgba(165,94,234,0.15);
+}
+.word-chip.has-sfx {
+    box-shadow: 0 0 8px rgba(255,71,87,0.15);
+}
+
+.sfx-card {
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.sfx-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+.sfx-card:active { transform: translateY(0) scale(0.96); }
+
+.stat-card {
+    transition: all 0.2s ease;
+}
+.stat-card:hover { transform: translateY(-2px); border-color: var(--accent); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+
+.generate-btn:active { transform: scale(0.97) !important; }
+
+.panel-tab { position: relative; }
+.panel-tab.active::after {
+    content: ''; position: absolute; bottom: -2px; left: 20%; right: 20%;
+    height: 2px; background: var(--accent); border-radius: 1px;
+    animation: tabSlide 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes tabSlide { from { left: 40%; right: 40%; opacity: 0; } to { left: 20%; right: 20%; opacity: 1; } }
+
+.nav-logo {
+    animation: logoIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes logoIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+/* Range slider custom styling */
+input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    height: 4px; background: var(--bg-4); border-radius: 2px;
+    outline: none; transition: background 0.2s;
+}
+input[type=range]:hover { background: var(--bg-3); }
+input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent); cursor: pointer;
+    box-shadow: 0 0 6px rgba(78,205,196,0.3);
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 12px rgba(78,205,196,0.5);
+}
+input[type=range]:active::-webkit-slider-thumb { transform: scale(0.95); }
+
+/* ===== Value Change Animation ===== */
+@keyframes valuePop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.3); color: var(--accent); }
+    100% { transform: scale(1); }
+}
+.value-pop { animation: valuePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* ===== Option Change Flash ===== */
+@keyframes optionFlash {
+    0% { background: rgba(78,205,196,0.2); }
+    100% { background: transparent; }
+}
+.option-flash { animation: optionFlash 0.5s ease; }
+
+/* ===== Drag cursor for panning ===== */
+.timeline-scroll.panning { cursor: grabbing !important; }
+.timeline-scroll.pan-ready { cursor: grab; }
+
+/* ===== SFX Place Mode ===== */
+.sfx-card.place-active {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    box-shadow: 0 0 16px rgba(78,205,196,0.4);
+    animation: placeGlow 1.5s ease infinite;
+}
+@keyframes placeGlow {
+    0%, 100% { box-shadow: 0 0 10px rgba(78,205,196,0.3); }
+    50% { box-shadow: 0 0 24px rgba(78,205,196,0.6); }
+}
+.place-mode-banner {
+    display: none; position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: #000; padding: 8px 20px; border-radius: 20px;
+    font-size: 13px; font-weight: 600; z-index: 150;
+    box-shadow: 0 4px 20px rgba(78,205,196,0.5);
+    animation: slideUp 0.3s ease;
+}
+.place-mode-banner.visible { display: block; }
+
+/* ===== Download Config Button ===== */
+.download-cfg-btn {
+    padding: 10px 24px; font-size: 14px; font-weight: 700;
+    background: linear-gradient(135deg, #ffa502, #ff6348);
+    color: #fff; border: none; border-radius: var(--radius);
+    cursor: pointer; transition: all var(--transition);
+    margin-top: 8px;
+}
+.download-cfg-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+/* ===== Mobile Responsive ===== */
+@media (max-width: 768px) {
+    body { overflow: auto; overscroll-behavior: contain; }
+
+    .main { flex-direction: column; }
+
+    /* Sidebar → horizontal word strip */
+    .sidebar {
+        width: 100% !important; max-width: none; min-width: 0;
+        height: 90px; border-right: none; border-bottom: 1px solid var(--border);
+        flex-shrink: 0; order: 1;
+    }
+    .sidebar.collapsed { height: 0; opacity: 0; }
+    .panel-header { padding: 6px 10px; }
+    .transcript-words {
+        flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+        align-content: center; gap: 6px; padding: 6px 10px;
+        -webkit-overflow-scrolling: touch;
+    }
+    .word-chip {
+        flex-shrink: 0; min-height: 36px; padding: 6px 10px; font-size: 13px;
+        touch-action: manipulation;
+    }
+    .sidebar-toggle { top: auto !important; left: auto; right: 8px; bottom: auto; }
+    .sidebar-toggle.visible { display: block; position: fixed; top: 50px; right: 8px; left: auto; z-index: 20; }
+
+    /* Center column */
+    .center { order: 2; flex: 1; min-height: 0; }
+
+    /* Timeline */
+    .timeline-area { order: 1; }
+    .timeline-labels { display: none; }
+    #timeline-canvas { touch-action: none; }
+
+    /* Visualizer — hidden on mobile */
+    .visualizer-bar { display: none; }
+
+    /* Playback bar */
+    .playback-bar {
+        flex-wrap: wrap; gap: 8px; padding: 8px 10px; order: 2;
+    }
+    .pb-btn { min-width: 44px; min-height: 44px; touch-action: manipulation; }
+    .pb-btn.play-btn { width: 48px; height: 48px; font-size: 18px; }
+
+    /* Zoom — hidden on mobile (use pinch) */
+    .zoom-section { display: none; }
+
+    /* Bottom panel */
+    .bottom-panel { order: 3; min-height: 200px; }
+    .panel-tab { padding: 10px 14px; font-size: 13px; touch-action: manipulation; }
+
+    /* SFX grid */
+    .sfx-card {
+        min-height: 44px; padding: 10px 14px; font-size: 13px;
+        cursor: pointer; touch-action: manipulation;
+    }
+
+    /* Popups — mobile width */
+    .popup { min-width: auto; width: 90vw; max-width: 400px; }
+    .popup-actions button {
+        min-height: 44px; padding: 10px 16px; font-size: 14px;
+        touch-action: manipulation;
+    }
+    .preset-btn { min-height: 44px; padding: 10px 14px; touch-action: manipulation; }
+
+    /* Nav compact */
+    .nav { padding: 0 8px; height: 44px; }
+    .nav-logo { font-size: 12px; }
+    .nav-btn { min-height: 36px; min-width: 36px; padding: 4px 8px; touch-action: manipulation; }
+
+    /* Generate / download buttons */
+    .generate-btn, .download-cfg-btn {
+        width: 100%; min-height: 48px; font-size: 16px;
+        touch-action: manipulation;
+    }
+
+    /* Toast positioning */
+    .toast-container { top: auto; bottom: 70px; right: 10px; left: 10px; }
+    .toast { max-width: none; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+    <!-- Nav -->
+    <nav class="nav">
+        <div class="nav-section">
+            <span class="nav-logo">TIMELINE EDITOR</span>
+        </div>
+        <div class="nav-section">
+            <button class="nav-btn" id="btn-undo" title="Undo (Ctrl+Z)" disabled>&#8630; Undo</button>
+            <span class="undo-depth" id="undo-depth"></span>
+            <button class="nav-btn" id="btn-redo" title="Redo (Ctrl+Shift+Z)" disabled>Redo &#8631;</button>
+            <span style="width:16px"></span>
+            <button class="nav-btn" id="btn-save" title="Save (Ctrl+S)">Save</button>
+        </div>
+        <div class="nav-section">
+            <span class="nav-time" id="nav-time">0:00 / 0:00</span>
+        </div>
+    </nav>
+
+    <!-- Main -->
+    <div class="main">
+        <!-- Sidebar: Transcript -->
+        <div class="sidebar" id="sidebar">
+            <div class="panel-header">
+                <span>Transcript <span id="word-count" style="color:var(--text-3);margin-left:6px"></span></span>
+                <button class="close-btn" id="btn-close-sidebar" title="Hide transcript">&times;</button>
+            </div>
+            <div class="transcript-words" id="transcript-words"></div>
+        </div>
+        <button class="sidebar-toggle" id="btn-open-sidebar" title="Show transcript">&#9776;</button>
+
+        <!-- Center -->
+        <div class="center">
+            <!-- Timeline -->
+            <div class="timeline-area">
+                <div class="timeline-labels">
+                    <div class="track-label" style="height:28px">Time</div>
+                    <div class="track-label" style="height:120px">Voice</div>
+                    <div class="track-label" style="height:36px">Pitch</div>
+                    <div class="track-label" style="height:36px">SFX</div>
+                </div>
+                <div class="timeline-scroll" id="timeline-scroll">
+                    <div id="timeline-spacer" style="height:1px;pointer-events:none"></div>
+                    <canvas id="timeline-canvas" style="position:sticky;left:0;top:0"></canvas>
+                </div>
+            </div>
+
+            <!-- Audio Visualizer -->
+            <div class="visualizer-bar">
+                <canvas id="visualizer-canvas"></canvas>
+            </div>
+
+            <!-- Playback Controls -->
+            <div class="playback-bar">
+                <div class="pb-section">
+                    <button class="pb-btn" id="btn-start" title="Home">&#9198;</button>
+                    <button class="pb-btn play-btn" id="btn-play" title="Play/Pause (Space)">&#9654;</button>
+                    <button class="pb-btn" id="btn-end" title="End">&#9197;</button>
+                    <span class="pb-time">
+                        <span id="time-current">0:00.0</span>
+                        <span class="sep">/</span>
+                        <span id="time-total">0:00.0</span>
+                    </span>
+                </div>
+                <div class="pb-section">
+                    <span class="pb-label">Speed</span>
+                    <input type="range" class="pb-slider" id="speed-slider" min="0.5" max="2" step="0.1" value="1.2">
+                    <span class="pb-value" id="speed-value">1.2x</span>
+                </div>
+                <div class="pb-section zoom-section">
+                    <button class="zoom-btn" id="btn-zoom-out" title="Zoom Out (-)">-</button>
+                    <input type="range" style="width:80px" id="zoom-slider" min="0.3" max="50" step="0.1" value="1">
+                    <button class="zoom-btn" id="btn-zoom-in" title="Zoom In (+)">+</button>
+                    <button class="fit-btn" id="btn-fit" title="Fit to View (0)">Fit</button>
+                </div>
+            </div>
+
+            <!-- Bottom Panel -->
+            <div class="bottom-panel">
+                <div class="panel-tabs">
+                    <button class="panel-tab active" data-tab="sfx-tab">SFX Library</button>
+                    <button class="panel-tab" data-tab="export-tab">Export</button>
+                </div>
+                <div class="tab-content active" id="sfx-tab"></div>
+                <div class="tab-content" id="export-tab"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pitch Popup Overlay -->
+<div class="popup-overlay" id="pitch-overlay">
+    <div class="popup" id="pitch-popup">
+        <div class="popup-title">Pitch Drop</div>
+        <div class="popup-subtitle" id="pitch-word"></div>
+        <div class="popup-row">
+            <label>Semitones</label>
+            <input type="range" id="pitch-slider" min="-8" max="-1" step="1" value="-4">
+            <span class="value" id="pitch-value">-4</span>
+        </div>
+        <div class="popup-presets">
+            <button class="preset-btn" data-st="-2">Light (-2)</button>
+            <button class="preset-btn active" data-st="-4">Medium (-4)</button>
+            <button class="preset-btn" data-st="-6">Heavy (-6)</button>
+        </div>
+        <div class="popup-actions">
+            <button class="btn-cancel" id="pitch-cancel">Cancel</button>
+            <button class="btn-remove" id="pitch-remove">Remove</button>
+            <button class="btn-save" id="pitch-save">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- SFX Edit Popup Overlay -->
+<div class="popup-overlay" id="sfx-overlay">
+    <div class="popup" id="sfx-popup">
+        <div class="popup-title">Edit SFX</div>
+        <div class="popup-subtitle" id="sfx-edit-word"></div>
+        <div class="popup-row">
+            <label>Volume</label>
+            <input type="range" id="sfx-vol-slider" min="0" max="100" step="5" value="70">
+            <span class="value" id="sfx-vol-value">70%</span>
+        </div>
+        <div class="popup-actions">
+            <button class="btn-cancel" id="sfx-cancel">Cancel</button>
+            <button class="btn-remove" id="sfx-remove">Remove</button>
+            <button class="btn-save" id="sfx-save">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Place Mode Banner -->
+<div class="place-mode-banner" id="place-mode-banner">Tap a word to place SFX &mdash; <span id="place-mode-cancel" style="text-decoration:underline;cursor:pointer">Cancel</span></div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loading">
+    <div><span class="loading-spinner"></span><span class="loading-text">Loading timeline data...</span></div>
+</div>
+
+<script>
+// ============================================================
+// State
+// ============================================================
+const S = {
+    words: [],
+    sfxLibrary: [],
+    sfxPlacements: [],   // [{wordIndex, sfxId, sfxName, sfxColor, volume}]
+    pitchDrops: [],      // [{startIdx, endIdx, semitones}]
+    markers: [],         // [{time, label, color}]
+    speed: 1.2,
+    zoom: 1,
+    duration: 0,
+    currentTime: 0,
+    isPlaying: false,
+    selectedWord: -1,
+    hoveredWord: -1,
+    loopIn: -1,
+    loopOut: -1,
+};
+
+const undoStack = [];
+const redoStack = [];
+const PPS_BASE = 50; // pixels per second at zoom 1
+const RULER_H = 28;
+const VOICE_H = 120;
+const PITCH_H = 36;
+const SFX_H = 36;
+const CANVAS_H = RULER_H + VOICE_H + PITCH_H + SFX_H;
+
+let audioEl = null;
+let audioCtx = null;
+let audioBuffer = null;
+let analyser = null;
+let analyserData = null;
+let audioSourceNode = null;
+let waveformPeaks = [];
+let animFrame = null;
+let saveTimeout = null;
+let firedSfx = new Set();
+let sfxBuffers = {};
+let pitchPopupWordIdx = -1;
+let sfxPopupWordIdx = -1;
+let isGenerating = false;
+let isRender = false;
+let placeModesfx = null; // SFX data for tap-to-place mode
+let longPressTimer = null;
+
+// ============================================================
+// Utility
+// ============================================================
+// Zoom log scale helpers (0.3 to 50 mapped to 0-100 slider)
+function zoomToSlider(z) { return Math.log(z / 0.3) / Math.log(50 / 0.3) * 100; }
+function sliderToZoom(v) { return 0.3 * Math.pow(50 / 0.3, v / 100); }
+function syncZoomSlider() {
+    const el = document.getElementById('zoom-slider');
+    if (el) el.value = zoomToSlider(S.zoom);
+}
+
+function fmt(t) {
+    if (t < 0) t = 0;
+    const m = Math.floor(t / 60);
+    const s = t % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s.toFixed(1)}`;
+}
+
+function toast(msg, type = 'info') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+}
+
+function normalize(w) {
+    return w.replace(/[.,!?;:'"]/g, '').toLowerCase();
+}
+
+function pps() { return PPS_BASE * S.zoom; }
+function timeToX(t) { return t * pps(); }
+function xToTime(x) { return x / pps(); }
+
+// ============================================================
+// Undo / Redo
+// ============================================================
+function snapshot() {
+    return {
+        sfxPlacements: JSON.parse(JSON.stringify(S.sfxPlacements)),
+        pitchDrops: JSON.parse(JSON.stringify(S.pitchDrops)),
+        markers: JSON.parse(JSON.stringify(S.markers)),
+        speed: S.speed,
+    };
+}
+function pushUndo() {
+    undoStack.push(snapshot());
+    redoStack.length = 0;
+    if (undoStack.length > 100) undoStack.shift();
+    updateUndoUI();
+    scheduleSave();
+}
+function undo() {
+    if (!undoStack.length) return;
+    redoStack.push(snapshot());
+    const s = undoStack.pop();
+    Object.assign(S, s);
+    updateUndoUI();
+    renderAll();
+    scheduleSave();
+    toast('Undo', 'info');
+}
+function redo() {
+    if (!redoStack.length) return;
+    undoStack.push(snapshot());
+    const s = redoStack.pop();
+    Object.assign(S, s);
+    updateUndoUI();
+    renderAll();
+    scheduleSave();
+    toast('Redo', 'info');
+}
+function updateUndoUI() {
+    document.getElementById('btn-undo').disabled = !undoStack.length;
+    document.getElementById('btn-redo').disabled = !redoStack.length;
+    document.getElementById('undo-depth').textContent = undoStack.length ? undoStack.length : '';
+}
+
+// ============================================================
+// Pitch Drop Resolution
+// ============================================================
+function resolvePitchMarkers(markers) {
+    const drops = [];
+    const used = new Set();
+    for (const m of markers) {
+        const pw = m.phrase.toLowerCase().split(/\s+/);
+        let found = false;
+        for (let i = 0; i <= S.words.length - pw.length; i++) {
+            if (used.has(i)) continue;
+            let ok = true;
+            for (let j = 0; j < pw.length; j++) {
+                if (normalize(S.words[i + j].word) !== pw[j]) { ok = false; break; }
+            }
+            if (ok) {
+                drops.push({ startIdx: i, endIdx: i + pw.length - 1, semitones: m.semitones });
+                for (let j = i; j < i + pw.length; j++) used.add(j);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            const last = pw[pw.length - 1];
+            for (let i = 0; i < S.words.length; i++) {
+                if (!used.has(i) && normalize(S.words[i].word) === last) {
+                    drops.push({ startIdx: i, endIdx: i, semitones: m.semitones });
+                    used.add(i);
+                    break;
+                }
+            }
+        }
+    }
+    return drops;
+}
+
+function pitchDropsToMarkers() {
+    return S.pitchDrops.map(d => ({
+        phrase: S.words.slice(d.startIdx, d.endIdx + 1).map(w => normalize(w.word)).join(' '),
+        semitones: d.semitones,
+    }));
+}
+
+function getPitchForWord(idx) {
+    for (const d of S.pitchDrops) {
+        if (idx >= d.startIdx && idx <= d.endIdx) return d;
+    }
+    return null;
+}
+
+function getSfxForWord(idx) {
+    return S.sfxPlacements.find(p => p.wordIndex === idx) || null;
+}
+
+// ============================================================
+// Save / Load
+// ============================================================
+function scheduleSave() {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(saveState, 3000);
+}
+
+async function saveState() {
+    const body = {
+        sfx_placements: S.sfxPlacements.map(p => ({
+            sfx_path: '', // resolved by pipeline from sfxId
+            sfx_id: p.sfxId,
+            sfx_name: p.sfxName,
+            time: S.words[p.wordIndex] ? S.words[p.wordIndex].start : 0,
+            volume: (p.volume || 70) / 100,
+            word_index: p.wordIndex,
+        })),
+        pitch_drops: S.pitchDrops,
+        markers: S.markers,
+        speed: S.speed,
+    };
+    try {
+        await fetch('/api/save-state', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
+        await fetch('/api/save-pitch-markers', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(pitchDropsToMarkers()) });
+    } catch (e) {
+        console.error('Save failed', e);
+    }
+}
+
+async function saveNow() {
+    clearTimeout(saveTimeout);
+    await saveState();
+    toast('Saved', 'success');
+}
+
+// ============================================================
+// Audio
+// ============================================================
+function initAudio() {
+    audioEl = new Audio('/api/audio');
+    audioEl.crossOrigin = 'anonymous';
+    audioEl.preload = 'auto';
+    audioEl.playbackRate = S.speed;
+    audioEl.preservesPitch = false;
+
+    audioEl.addEventListener('loadedmetadata', () => {
+        S.duration = audioEl.duration;
+        document.getElementById('time-total').textContent = fmt(S.duration);
+        document.getElementById('nav-time').textContent = `0:00 / ${fmt(S.duration)}`;
+        renderTimeline();
+    });
+    audioEl.addEventListener('ended', () => {
+        S.isPlaying = false;
+        updatePlayBtn();
+        cancelAnimationFrame(animFrame);
+    });
+
+    // Decode audio separately for waveform display (doesn't affect playback)
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    fetch('/api/audio').then(r => r.arrayBuffer()).then(buf => {
+        if (!buf.byteLength) return;
+        return audioCtx.decodeAudioData(buf);
+    }).then(decoded => {
+        if (!decoded) return;
+        audioBuffer = decoded;
+        S.duration = decoded.duration;
+        computeWaveform();
+        renderTimeline();
+        document.getElementById('time-total').textContent = fmt(S.duration);
+    }).catch(e => console.error('Audio decode failed:', e));
+}
+
+function connectAnalyser() {
+    // Connect on first play (needs user gesture for AudioContext)
+    if (audioSourceNode) return; // already connected
+    try {
+        audioCtx.resume();
+        audioSourceNode = audioCtx.createMediaElementSource(audioEl);
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+        analyserData = new Uint8Array(analyser.frequencyBinCount);
+        audioSourceNode.connect(analyser);
+        analyser.connect(audioCtx.destination);
+    } catch (e) {
+        console.error('Analyser connect failed:', e);
+    }
+}
+
+function computeWaveform() {
+    if (!audioBuffer) return;
+    const raw = audioBuffer.getChannelData(0);
+    const sr = audioBuffer.sampleRate;
+    const step = Math.floor(sr * 0.005); // 200 peaks/sec
+    waveformPeaks = [];
+    for (let i = 0; i < raw.length; i += step) {
+        let max = 0;
+        for (let j = i; j < Math.min(i + step, raw.length); j++) {
+            const v = Math.abs(raw[j]);
+            if (v > max) max = v;
+        }
+        waveformPeaks.push(max);
+    }
+}
+
+function togglePlay() {
+    if (!audioEl) return;
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+    connectAnalyser();
+    if (S.isPlaying) {
+        audioEl.pause();
+        S.isPlaying = false;
+        cancelAnimationFrame(animFrame);
+        // Clear visualizer
+        const vc = document.getElementById('visualizer-canvas');
+        vc.getContext('2d').clearRect(0, 0, vc.width, vc.height);
+    } else {
+        audioEl.playbackRate = S.speed;
+        audioEl.preservesPitch = false;
+        audioEl.play().catch(() => {});
+        S.isPlaying = true;
+        firedSfx.clear();
+        tick();
+    }
+    updatePlayBtn();
+}
+
+function seek(t) {
+    t = Math.max(0, Math.min(t, S.duration || 0));
+    S.currentTime = t;
+    if (audioEl) audioEl.currentTime = t;
+    firedSfx.clear();
+    updateTimeDisplay();
+    renderTimeline();
+}
+
+function updatePlayBtn() {
+    const btn = document.getElementById('btn-play');
+    btn.innerHTML = S.isPlaying ? '&#9646;&#9646;' : '&#9654;';
+    btn.classList.toggle('playing', S.isPlaying);
+}
+
+function tick() {
+    if (!S.isPlaying) return;
+    S.currentTime = audioEl.currentTime;
+
+    // Loop
+    if (S.loopIn >= 0 && S.loopOut > S.loopIn && S.currentTime >= S.loopOut) {
+        seek(S.loopIn);
+        audioEl.play().catch(() => {});
+    }
+
+    // SFX playback
+    checkSfxPlayback();
+
+    updateTimeDisplay();
+    renderTimeline();
+    drawVisualizer();
+    highlightCurrentWord();
+    autoScrollTimeline();
+    animFrame = requestAnimationFrame(tick);
+}
+
+function updateTimeDisplay() {
+    document.getElementById('time-current').textContent = fmt(S.currentTime);
+    document.getElementById('nav-time').textContent = `${fmt(S.currentTime)} / ${fmt(S.duration)}`;
+}
+
+function checkSfxPlayback() {
+    for (let i = 0; i < S.sfxPlacements.length; i++) {
+        if (firedSfx.has(i)) continue;
+        const p = S.sfxPlacements[i];
+        const w = S.words[p.wordIndex];
+        if (!w) continue;
+        if (S.currentTime >= w.start && S.currentTime < w.start + 0.3) {
+            firedSfx.add(i);
+            playSfxSound(p.sfxId, (p.volume || 70) / 100);
+        }
+    }
+}
+
+async function playSfxSound(sfxId, volume) {
+    if (!audioCtx) return;
+    if (sfxBuffers[sfxId]) {
+        const src = audioCtx.createBufferSource();
+        src.buffer = sfxBuffers[sfxId];
+        const gain = audioCtx.createGain();
+        gain.gain.value = volume;
+        src.connect(gain).connect(audioCtx.destination);
+        src.start();
+        return;
+    }
+    try {
+        const resp = await fetch(`/api/sfx/${sfxId}`);
+        const buf = await resp.arrayBuffer();
+        const decoded = await audioCtx.decodeAudioData(buf);
+        sfxBuffers[sfxId] = decoded;
+        const src = audioCtx.createBufferSource();
+        src.buffer = decoded;
+        const gain = audioCtx.createGain();
+        gain.gain.value = volume;
+        src.connect(gain).connect(audioCtx.destination);
+        src.start();
+    } catch (e) {}
+}
+
+function drawVisualizer() {
+    const canvas = document.getElementById('visualizer-canvas');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    if (!analyser || !analyserData) return;
+    analyser.getByteFrequencyData(analyserData);
+
+    const barCount = analyser.frequencyBinCount;
+    const barW = w / barCount;
+    const gradient = ctx.createLinearGradient(0, h, 0, 0);
+    gradient.addColorStop(0, 'rgba(78,205,196,0.6)');
+    gradient.addColorStop(0.5, 'rgba(78,205,196,0.9)');
+    gradient.addColorStop(1, 'rgba(165,94,234,0.9)');
+
+    for (let i = 0; i < barCount; i++) {
+        const v = analyserData[i] / 255;
+        const barH = v * h;
+        ctx.fillStyle = gradient;
+        ctx.fillRect(i * barW, h - barH, barW - 1, barH);
+    }
+
+    // Center line
+    ctx.strokeStyle = 'rgba(78,205,196,0.15)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
+}
+
+function autoScrollTimeline() {
+    const scroll = document.getElementById('timeline-scroll');
+    const playX = timeToX(S.currentTime);
+    const viewL = scroll.scrollLeft;
+    const viewR = viewL + scroll.clientWidth;
+    if (playX < viewL + 50 || playX > viewR - 50) {
+        scroll.scrollLeft = playX - scroll.clientWidth * 0.3;
+    }
+}
+
+// ============================================================
+// Timeline Canvas Rendering
+// ============================================================
+let viewOffset = 0; // current scroll offset for viewport rendering
+
+function renderTimeline() {
+    const canvas = document.getElementById('timeline-canvas');
+    const scroll = document.getElementById('timeline-scroll');
+    const spacer = document.getElementById('timeline-spacer');
+    const dur = Math.max(S.duration || 1, S.words.length ? S.words[S.words.length - 1].end + 1 : 1);
+    const fullW = Math.max(scroll.clientWidth, timeToX(dur) + 60);
+    const viewW = scroll.clientWidth;
+    const h = CANVAS_H;
+
+    // Set spacer to full virtual width so scrollbar works
+    spacer.style.width = fullW + 'px';
+
+    // Canvas only covers the visible viewport
+    canvas.width = viewW;
+    canvas.height = h;
+    viewOffset = scroll.scrollLeft;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, viewW, h);
+
+    // Shift all drawing by -scrollLeft so it aligns with the visible area
+    ctx.save();
+    ctx.translate(-viewOffset, 0);
+
+    drawRuler(ctx, fullW, dur);
+    drawVoiceTrack(ctx, fullW);
+    drawPitchTrack(ctx, fullW);
+    drawSfxTrack(ctx, fullW);
+    drawMarkers(ctx);
+    drawPlayhead(ctx, h);
+    drawLoopRegion(ctx, h);
+
+    ctx.restore();
+}
+
+// Visible range helpers (in pixels, virtual coordinates)
+function viewLeft() { return viewOffset; }
+function viewRight() { return viewOffset + (document.getElementById('timeline-scroll')?.clientWidth || 2000); }
+
+function drawRuler(ctx, w, dur) {
+    const y0 = 0;
+    const vl = viewLeft(), vr = viewRight();
+    ctx.fillStyle = '#0f0f14';
+    ctx.fillRect(vl, y0, vr - vl, RULER_H);
+    ctx.strokeStyle = '#2a2a36';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(vl, RULER_H - 0.5); ctx.lineTo(vr, RULER_H - 0.5); ctx.stroke();
+
+    // Adaptive tick interval
+    const ppx = pps();
+    let interval = 1;
+    if (ppx < 20) interval = 10;
+    else if (ppx < 40) interval = 5;
+    else if (ppx < 80) interval = 2;
+    else interval = 1;
+
+    ctx.font = '10px system-ui';
+    ctx.fillStyle = '#7a7a8e';
+    ctx.textAlign = 'center';
+
+    // Start from the first visible tick
+    const startT = Math.max(0, Math.floor(xToTime(vl) / interval) * interval);
+    for (let t = startT; t <= dur + interval; t += interval) {
+        const x = timeToX(t);
+        if (x > vr + 20) break;
+        ctx.strokeStyle = '#2a2a36';
+        ctx.beginPath(); ctx.moveTo(x, RULER_H - 10); ctx.lineTo(x, RULER_H); ctx.stroke();
+        ctx.fillText(`${Math.floor(t / 60)}:${(t % 60).toString().padStart(2, '0')}`, x, RULER_H - 14);
+
+        // Sub-ticks
+        if (interval >= 2) {
+            for (let st = 1; st < interval; st++) {
+                const sx = timeToX(t + st);
+                if (sx > vr + 20) break;
+                ctx.strokeStyle = '#1e1e28';
+                ctx.beginPath(); ctx.moveTo(sx, RULER_H - 5); ctx.lineTo(sx, RULER_H); ctx.stroke();
+            }
+        }
+    }
+}
+
+function drawVoiceTrack(ctx, w) {
+    const y0 = RULER_H;
+    const vl = viewLeft(), vr = viewRight();
+    ctx.fillStyle = '#111116';
+    ctx.fillRect(vl, y0, vr - vl, VOICE_H);
+    ctx.strokeStyle = '#2a2a36';
+    ctx.beginPath(); ctx.moveTo(vl, y0 + VOICE_H - 0.5); ctx.lineTo(vr, y0 + VOICE_H - 0.5); ctx.stroke();
+
+    // Waveform — only draw visible bars
+    if (waveformPeaks.length) {
+        const peaksPerSec = 200;
+        const mid = y0 + VOICE_H / 2;
+        const maxH = VOICE_H / 2 - 6;
+
+        const grad = ctx.createLinearGradient(0, mid - maxH, 0, mid + maxH);
+        grad.addColorStop(0, 'rgba(165,94,234,0.8)');
+        grad.addColorStop(0.3, 'rgba(78,205,196,0.9)');
+        grad.addColorStop(0.5, 'rgba(78,205,196,1)');
+        grad.addColorStop(0.7, 'rgba(78,205,196,0.9)');
+        grad.addColorStop(1, 'rgba(165,94,234,0.8)');
+
+        const barW = 2;
+        const gap = 1;
+        const startPx = Math.max(0, Math.floor(vl / (barW + gap)) * (barW + gap));
+        for (let px = startPx; px < Math.min(w, vr + barW); px += barW + gap) {
+            const t = xToTime(px);
+            const idx = Math.floor(t * peaksPerSec);
+            if (idx >= waveformPeaks.length) break;
+            let peak = waveformPeaks[idx];
+            const idx2 = Math.floor(xToTime(px + barW) * peaksPerSec);
+            if (idx2 < waveformPeaks.length && idx2 !== idx) {
+                peak = (peak + waveformPeaks[idx2]) / 2;
+            }
+            const h = Math.max(1, peak * maxH);
+            ctx.fillStyle = grad;
+            ctx.fillRect(px, mid - h, barW, h * 2);
+        }
+
+        ctx.strokeStyle = 'rgba(78,205,196,0.2)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath(); ctx.moveTo(vl, mid); ctx.lineTo(vr, mid); ctx.stroke();
+    }
+
+    // Word blocks — only draw visible words
+    const currentWordIdx = getCurrentWordIndex();
+    for (let i = 0; i < S.words.length; i++) {
+        const word = S.words[i];
+        const x1 = timeToX(word.start);
+        const x2 = timeToX(word.end);
+        if (x2 < vl - 10 || x1 > vr + 10) continue; // skip off-screen
+        const ww = x2 - x1;
+
+        ctx.strokeStyle = 'rgba(78,205,196,0.1)';
+        ctx.beginPath(); ctx.moveTo(x1, y0); ctx.lineTo(x1, y0 + VOICE_H); ctx.stroke();
+
+        if (i === currentWordIdx) {
+            ctx.fillStyle = 'rgba(78,205,196,0.15)';
+            ctx.fillRect(x1, y0, ww, VOICE_H);
+        }
+
+        if (ww > 20) {
+            ctx.font = '10px system-ui';
+            ctx.fillStyle = i === currentWordIdx ? '#4ecdc4' : 'rgba(240,240,244,0.5)';
+            ctx.textAlign = 'center';
+            ctx.fillText(word.word, x1 + ww / 2, y0 + VOICE_H - 6, ww - 4);
+        }
+    }
+}
+
+function drawPitchTrack(ctx, w) {
+    const y0 = RULER_H + VOICE_H;
+    const vl = viewLeft(), vr = viewRight();
+    ctx.fillStyle = '#0e0e13';
+    ctx.fillRect(vl, y0, vr - vl, PITCH_H);
+    ctx.strokeStyle = '#2a2a36';
+    ctx.beginPath(); ctx.moveTo(vl, y0 + PITCH_H - 0.5); ctx.lineTo(vr, y0 + PITCH_H - 0.5); ctx.stroke();
+
+    for (const drop of S.pitchDrops) {
+        const ws = S.words[drop.startIdx];
+        const we = S.words[drop.endIdx];
+        if (!ws || !we) continue;
+        const x1 = timeToX(ws.start);
+        const x2 = timeToX(we.end);
+        if (x2 < vl || x1 > vr) continue; // skip off-screen
+        const depth = Math.abs(drop.semitones) / 8;
+
+        const grad = ctx.createLinearGradient(x1, y0, x1, y0 + PITCH_H);
+        grad.addColorStop(0, `rgba(165,94,234,${0.15 + depth * 0.35})`);
+        grad.addColorStop(1, `rgba(165,94,234,${0.05 + depth * 0.15})`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(x1, y0, x2 - x1, PITCH_H);
+
+        ctx.strokeStyle = 'rgba(165,94,234,0.6)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x1 + 0.5, y0 + 0.5, x2 - x1 - 1, PITCH_H - 1);
+
+        const mid = (x1 + x2) / 2;
+        ctx.font = 'bold 10px system-ui';
+        ctx.fillStyle = '#a55eea';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${drop.semitones} st`, mid, y0 + PITCH_H / 2 + 4);
+    }
+}
+
+function drawSfxTrack(ctx, w) {
+    const y0 = RULER_H + VOICE_H + PITCH_H;
+    const vl = viewLeft(), vr = viewRight();
+    ctx.fillStyle = '#0d0d12';
+    ctx.fillRect(vl, y0, vr - vl, SFX_H);
+
+    for (const p of S.sfxPlacements) {
+        const word = S.words[p.wordIndex];
+        if (!word) continue;
+        const x = timeToX(word.start);
+        const chipW = Math.max(40, pps() * 0.5);
+        if (x + chipW < vl || x > vr) continue; // skip off-screen
+
+        ctx.fillStyle = p.sfxColor || '#ff4757';
+        ctx.globalAlpha = 0.25;
+        ctx.fillRect(x, y0 + 4, chipW, SFX_H - 8);
+        ctx.globalAlpha = 1;
+
+        ctx.strokeStyle = p.sfxColor || '#ff4757';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + 0.5, y0 + 4.5, chipW - 1, SFX_H - 9);
+
+        if (S.isPlaying && S.currentTime >= word.start && S.currentTime < word.start + 0.3) {
+            ctx.fillStyle = p.sfxColor || '#ff4757';
+            ctx.globalAlpha = 0.4;
+            ctx.fillRect(x, y0 + 4, chipW, SFX_H - 8);
+            ctx.globalAlpha = 1;
+        }
+
+        ctx.font = '9px system-ui';
+        ctx.fillStyle = p.sfxColor || '#ff4757';
+        ctx.textAlign = 'left';
+        ctx.fillText(p.sfxName || p.sfxId, x + 4, y0 + SFX_H / 2 + 3, chipW - 8);
+    }
+}
+
+function drawMarkers(ctx) {
+    const vl = viewLeft(), vr = viewRight();
+    for (const m of S.markers) {
+        const x = timeToX(m.time);
+        if (x < vl - 10 || x > vr + 10) continue; // skip off-screen
+        ctx.fillStyle = m.color || '#ffa502';
+        ctx.beginPath();
+        ctx.moveTo(x, 2);
+        ctx.lineTo(x + 6, 2);
+        ctx.lineTo(x + 6, 12);
+        ctx.lineTo(x, 16);
+        ctx.lineTo(x - 6, 12);
+        ctx.lineTo(x - 6, 2);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = m.color || '#ffa502';
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath(); ctx.moveTo(x, 16); ctx.lineTo(x, CANVAS_H); ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        if (m.label) {
+            ctx.font = '9px system-ui';
+            ctx.fillStyle = m.color || '#ffa502';
+            ctx.textAlign = 'center';
+            ctx.fillText(m.label, x, RULER_H - 2);
+        }
+    }
+}
+
+function drawPlayhead(ctx, h) {
+    const x = timeToX(S.currentTime);
+    ctx.strokeStyle = '#4ecdc4';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+
+    // Playhead triangle
+    ctx.fillStyle = '#4ecdc4';
+    ctx.beginPath();
+    ctx.moveTo(x - 6, 0);
+    ctx.lineTo(x + 6, 0);
+    ctx.lineTo(x, 8);
+    ctx.closePath();
+    ctx.fill();
+}
+
+function drawLoopRegion(ctx, h) {
+    if (S.loopIn < 0 || S.loopOut <= S.loopIn) return;
+    const x1 = timeToX(S.loopIn);
+    const x2 = timeToX(S.loopOut);
+    ctx.fillStyle = 'rgba(78,205,196,0.06)';
+    ctx.fillRect(x1, 0, x2 - x1, h);
+    ctx.strokeStyle = 'rgba(78,205,196,0.3)';
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(x1, 0); ctx.lineTo(x1, h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x2, 0); ctx.lineTo(x2, h); ctx.stroke();
+    ctx.setLineDash([]);
+}
+
+function getCurrentWordIndex() {
+    for (let i = 0; i < S.words.length; i++) {
+        if (S.currentTime >= S.words[i].start && S.currentTime <= S.words[i].end) return i;
+    }
+    return -1;
+}
+
+// ============================================================
+// Transcript Panel
+// ============================================================
+function renderTranscript() {
+    const container = document.getElementById('transcript-words');
+    container.innerHTML = '';
+    document.getElementById('word-count').textContent = `${S.words.length} words`;
+
+    S.words.forEach((w, i) => {
+        const chip = document.createElement('span');
+        chip.className = 'word-chip';
+        chip.dataset.idx = i;
+
+        let html = w.word;
+        const pd = getPitchForWord(i);
+        const sfx = getSfxForWord(i);
+
+        if (pd) {
+            chip.classList.add('has-pitch');
+            html += `<span class="pitch-badge">\u2193${pd.semitones}</span>`;
+        }
+        if (sfx) {
+            chip.classList.add('has-sfx');
+            html = `<span class="sfx-dot" style="background:${sfx.sfxColor || '#ff4757'}"></span>` + html;
+            html += `<span class="sfx-badge" style="color:${sfx.sfxColor || '#ff4757'}">${sfx.sfxName || ''}</span>`;
+        }
+
+        chip.innerHTML = html;
+
+        // Staggered entrance animation
+        chip.style.animation = `chipIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) ${Math.min(i * 15, 1500)}ms both`;
+
+        // Click to seek
+        chip.addEventListener('click', (e) => {
+            if (e.button !== 0) return;
+            S.selectedWord = i;
+            seek(w.start);
+            renderTranscript();
+        });
+
+        // Right-click for pitch popup
+        chip.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            openPitchPopup(i);
+        });
+
+        // Double-click for SFX edit (if has SFX)
+        chip.addEventListener('dblclick', () => {
+            if (getSfxForWord(i)) openSfxPopup(i);
+        });
+
+        // Drag-over for SFX drop
+        chip.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            chip.classList.add('drag-over');
+        });
+        chip.addEventListener('dragleave', () => chip.classList.remove('drag-over'));
+        chip.addEventListener('drop', (e) => {
+            e.preventDefault();
+            chip.classList.remove('drag-over');
+            const sfxData = e.dataTransfer.getData('application/json');
+            if (sfxData) {
+                const sfx = JSON.parse(sfxData);
+                placeSfx(i, sfx);
+            }
+        });
+
+        // Hover tracking
+        chip.addEventListener('mouseenter', () => { S.hoveredWord = i; });
+        chip.addEventListener('mouseleave', () => { S.hoveredWord = -1; });
+
+        if (i === S.selectedWord) chip.classList.add('selected');
+        container.appendChild(chip);
+    });
+}
+
+function highlightCurrentWord() {
+    const idx = getCurrentWordIndex();
+    const chips = document.querySelectorAll('.word-chip');
+    chips.forEach((c, i) => {
+        c.classList.toggle('current', i === idx);
+    });
+
+    // Auto-scroll transcript
+    if (idx >= 0) {
+        const chip = chips[idx];
+        if (chip) {
+            const container = document.getElementById('transcript-words');
+            const cRect = container.getBoundingClientRect();
+            const wRect = chip.getBoundingClientRect();
+            if (wRect.top < cRect.top || wRect.bottom > cRect.bottom) {
+                chip.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+        }
+    }
+}
+
+// ============================================================
+// SFX Panel
+// ============================================================
+function renderSfxPanel() {
+    const container = document.getElementById('sfx-tab');
+    if (!S.sfxLibrary.length) {
+        container.innerHTML = '<div class="sfx-empty">No SFX files found.<br>Add .mp3 files to assets/sfx/&lt;category&gt;/ and restart.</div>';
+        return;
+    }
+
+    const cats = {};
+    for (const sfx of S.sfxLibrary) {
+        if (!cats[sfx.category]) cats[sfx.category] = { label: sfx.category_label, color: sfx.color, items: [] };
+        cats[sfx.category].items.push(sfx);
+    }
+
+    let html = '';
+    for (const [cat, data] of Object.entries(cats)) {
+        html += `<div class="sfx-category">`;
+        html += `<div class="sfx-category-label" style="color:${data.color}">${data.label}</div>`;
+        html += `<div class="sfx-grid">`;
+        for (const sfx of data.items) {
+            html += `<div class="sfx-card" draggable="true" data-sfx='${JSON.stringify(sfx).replace(/'/g, '&#39;')}'>`;
+            html += `<span class="dot" style="background:${sfx.color}"></span>`;
+            html += `<span class="name">${sfx.name}</span>`;
+            html += `</div>`;
+        }
+        html += `</div></div>`;
+    }
+    container.innerHTML = html;
+
+    // Animate SFX cards in
+    container.querySelectorAll('.sfx-card').forEach((card, i) => {
+        card.style.animation = `chipIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) ${i * 40}ms both`;
+    });
+
+    // Drag handlers + tap-to-place
+    const isTouchDevice = 'ontouchstart' in window;
+    container.querySelectorAll('.sfx-card').forEach(card => {
+        card.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('application/json', card.dataset.sfx);
+            e.dataTransfer.effectAllowed = 'copy';
+        });
+        card.addEventListener('click', () => {
+            const sfx = JSON.parse(card.dataset.sfx);
+            if (isTouchDevice) {
+                // On touch: toggle place mode (tap SFX → tap word)
+                if (placeModesfx && placeModesfx.id === sfx.id) {
+                    exitPlaceMode();
+                } else {
+                    enterPlaceMode(sfx);
+                }
+            } else {
+                // On desktop: preview sound
+                playSfxSound(sfx.id, 0.7);
+            }
+        });
+    });
+}
+
+function placeSfx(wordIndex, sfxData) {
+    // Remove existing SFX on this word
+    const existing = S.sfxPlacements.findIndex(p => p.wordIndex === wordIndex);
+    pushUndo();
+    if (existing >= 0) S.sfxPlacements.splice(existing, 1);
+    S.sfxPlacements.push({
+        wordIndex,
+        sfxId: sfxData.id,
+        sfxName: sfxData.name,
+        sfxColor: sfxData.color,
+        volume: 70,
+    });
+    renderAll();
+    toast(`SFX "${sfxData.name}" placed on "${S.words[wordIndex].word}"`, 'success');
+}
+
+function removeSfx(wordIndex) {
+    const idx = S.sfxPlacements.findIndex(p => p.wordIndex === wordIndex);
+    if (idx >= 0) {
+        pushUndo();
+        S.sfxPlacements.splice(idx, 1);
+        renderAll();
+        toast('SFX removed', 'info');
+    }
+}
+
+// ============================================================
+// Pitch Popup
+// ============================================================
+function openPitchPopup(wordIndex) {
+    pitchPopupWordIdx = wordIndex;
+    const word = S.words[wordIndex];
+    const drop = getPitchForWord(wordIndex);
+
+    document.getElementById('pitch-word').textContent = `"${word.word}" (${fmt(word.start)})`;
+    const slider = document.getElementById('pitch-slider');
+    const val = drop ? drop.semitones : -4;
+    slider.value = val;
+    document.getElementById('pitch-value').textContent = val;
+    updatePresetBtns(val);
+
+    document.getElementById('pitch-remove').style.display = drop ? '' : 'none';
+    document.getElementById('pitch-overlay').classList.add('visible');
+}
+
+function closePitchPopup() {
+    document.getElementById('pitch-overlay').classList.remove('visible');
+    pitchPopupWordIdx = -1;
+}
+
+function updatePresetBtns(val) {
+    document.querySelectorAll('#pitch-popup .preset-btn').forEach(b => {
+        b.classList.toggle('active', parseInt(b.dataset.st) === val);
+    });
+}
+
+function savePitchDrop() {
+    if (pitchPopupWordIdx < 0) return;
+    const semitones = parseInt(document.getElementById('pitch-slider').value);
+
+    pushUndo();
+    // Remove existing drop containing this word
+    S.pitchDrops = S.pitchDrops.filter(d => !(pitchPopupWordIdx >= d.startIdx && pitchPopupWordIdx <= d.endIdx));
+    S.pitchDrops.push({ startIdx: pitchPopupWordIdx, endIdx: pitchPopupWordIdx, semitones });
+    S.pitchDrops.sort((a, b) => a.startIdx - b.startIdx);
+
+    closePitchPopup();
+    renderAll();
+    toast(`Pitch drop ${semitones} st on "${S.words[pitchPopupWordIdx].word}"`, 'success');
+}
+
+function removePitchDrop() {
+    if (pitchPopupWordIdx < 0) return;
+    pushUndo();
+    S.pitchDrops = S.pitchDrops.filter(d => !(pitchPopupWordIdx >= d.startIdx && pitchPopupWordIdx <= d.endIdx));
+    closePitchPopup();
+    renderAll();
+    toast('Pitch drop removed', 'info');
+}
+
+// ============================================================
+// SFX Edit Popup
+// ============================================================
+function openSfxPopup(wordIndex) {
+    sfxPopupWordIdx = wordIndex;
+    const word = S.words[wordIndex];
+    const sfx = getSfxForWord(wordIndex);
+    if (!sfx) return;
+
+    document.getElementById('sfx-edit-word').textContent = `"${word.word}" — ${sfx.sfxName}`;
+    document.getElementById('sfx-vol-slider').value = sfx.volume || 70;
+    document.getElementById('sfx-vol-value').textContent = `${sfx.volume || 70}%`;
+    document.getElementById('sfx-overlay').classList.add('visible');
+}
+
+function closeSfxPopup() {
+    document.getElementById('sfx-overlay').classList.remove('visible');
+    sfxPopupWordIdx = -1;
+}
+
+function saveSfxEdit() {
+    if (sfxPopupWordIdx < 0) return;
+    const sfx = getSfxForWord(sfxPopupWordIdx);
+    if (!sfx) return;
+    pushUndo();
+    sfx.volume = parseInt(document.getElementById('sfx-vol-slider').value);
+    closeSfxPopup();
+    renderAll();
+    toast('SFX updated', 'success');
+}
+
+// ============================================================
+// Export Panel
+// ============================================================
+function renderExportPanel() {
+    const container = document.getElementById('export-tab');
+    const dur = S.duration || 0;
+
+    let html = '<div class="export-stats">';
+    html += `<div class="stat-card"><div class="stat-value">${S.words.length}</div><div class="stat-label">Words</div></div>`;
+    html += `<div class="stat-card"><div class="stat-value">${fmt(dur)}</div><div class="stat-label">Duration</div></div>`;
+    html += `<div class="stat-card"><div class="stat-value">${S.sfxPlacements.length}</div><div class="stat-label">SFX</div></div>`;
+    html += `<div class="stat-card"><div class="stat-value">${S.pitchDrops.length}</div><div class="stat-label">Pitch Drops</div></div>`;
+    html += `<div class="stat-card"><div class="stat-value">${S.speed}x</div><div class="stat-label">Speed</div></div>`;
+    html += '</div>';
+
+    if (S.pitchDrops.length) {
+        html += '<div class="export-list"><div class="export-list-title">Pitch Drops</div>';
+        for (const d of S.pitchDrops) {
+            const phrase = S.words.slice(d.startIdx, d.endIdx + 1).map(w => w.word).join(' ');
+            const t = S.words[d.startIdx]?.start || 0;
+            html += `<div class="export-item" style="border-left:3px solid var(--purple);padding-left:10px">${fmt(t)} — "${phrase}" (${d.semitones} st)</div>`;
+        }
+        html += '</div>';
+    }
+
+    if (S.sfxPlacements.length) {
+        html += '<div class="export-list"><div class="export-list-title">SFX Placements</div>';
+        const sorted = [...S.sfxPlacements].sort((a, b) => (S.words[a.wordIndex]?.start || 0) - (S.words[b.wordIndex]?.start || 0));
+        for (const p of sorted) {
+            const w = S.words[p.wordIndex];
+            html += `<div class="export-item" style="border-left:3px solid ${p.sfxColor || '#ff4757'};padding-left:10px">${fmt(w?.start || 0)} — ${p.sfxName} on "${w?.word}" (${p.volume || 70}%)</div>`;
+        }
+        html += '</div>';
+    }
+
+    html += '<div class="generate-section">';
+    if (isRender) {
+        html += `<button class="download-cfg-btn" id="btn-download-config">Download Config</button>`;
+        html += '<div class="generate-status" id="generate-status" style="margin-top:8px;font-size:11px;color:var(--text-3)">To generate video: download config, place in output/ folder on your PC, run pipeline_runner.py</div>';
+    } else {
+        html += `<button class="generate-btn" id="btn-generate" ${isGenerating ? 'disabled' : ''}>Generate Video</button>`;
+        html += '<div class="generate-status" id="generate-status"></div>';
+    }
+    html += '</div>';
+
+    container.innerHTML = html;
+
+    if (isRender) {
+        document.getElementById('btn-download-config')?.addEventListener('click', downloadConfig);
+    } else {
+        document.getElementById('btn-generate')?.addEventListener('click', generateVideo);
+    }
+}
+
+async function generateVideo() {
+    if (isGenerating) return;
+    isGenerating = true;
+    renderExportPanel();
+    document.getElementById('generate-status').textContent = 'Generating... this may take a few minutes.';
+    toast('Generating video...', 'info');
+
+    try {
+        await saveState();
+        const resp = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sfx_placements: S.sfxPlacements.map(p => ({
+                    sfx_path: '',
+                    sfx_id: p.sfxId,
+                    time: S.words[p.wordIndex]?.start || 0,
+                    volume: (p.volume || 70) / 100,
+                })),
+                base_speed: S.speed,
+                manual_pitch_drops: S.pitchDrops.map(d => ({
+                    start: S.words[d.startIdx]?.start || 0,
+                    end: S.words[d.endIdx]?.end || 0,
+                    semitones: d.semitones,
+                })),
+            }),
+        });
+        const result = await resp.json();
+        if (result.success) {
+            document.getElementById('generate-status').textContent = `Done! Output: ${result.output || 'final_video.mp4'}`;
+            toast('Video generated!', 'success');
+        } else {
+            document.getElementById('generate-status').textContent = `Error: ${result.error}`;
+            toast('Generation failed', 'error');
+        }
+    } catch (e) {
+        document.getElementById('generate-status').textContent = `Error: ${e.message}`;
+        toast('Generation failed', 'error');
+    }
+    isGenerating = false;
+    renderExportPanel();
+}
+
+async function downloadConfig() {
+    await saveState();
+    const a = document.createElement('a');
+    a.href = '/api/download-config';
+    a.download = 'timeline_config.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    toast('Config downloaded', 'success');
+}
+
+// ============================================================
+// Place Mode (tap-to-place SFX on mobile)
+// ============================================================
+function enterPlaceMode(sfxData) {
+    placeModesfx = sfxData;
+    document.getElementById('place-mode-banner').classList.add('visible');
+    // Highlight the active card
+    document.querySelectorAll('.sfx-card').forEach(c => c.classList.remove('place-active'));
+    document.querySelectorAll('.sfx-card').forEach(c => {
+        try {
+            const d = JSON.parse(c.dataset.sfx);
+            if (d.id === sfxData.id) c.classList.add('place-active');
+        } catch(e) {}
+    });
+}
+
+function exitPlaceMode() {
+    placeModesfx = null;
+    document.getElementById('place-mode-banner').classList.remove('visible');
+    document.querySelectorAll('.sfx-card').forEach(c => c.classList.remove('place-active'));
+}
+
+function handlePlaceModeWordTap(wordIndex) {
+    if (!placeModesfx) return;
+    placeSfx(wordIndex, placeModesfx);
+    exitPlaceMode();
+}
+
+// ============================================================
+// Render All
+// ============================================================
+function renderAll() {
+    renderTimeline();
+    renderTranscript();
+    renderExportPanel();
+}
+
+// ============================================================
+// Event Handlers
+// ============================================================
+function setupEvents() {
+    // Play button
+    document.getElementById('btn-play').addEventListener('click', togglePlay);
+    document.getElementById('btn-start').addEventListener('click', () => seek(0));
+    document.getElementById('btn-end').addEventListener('click', () => seek(S.duration));
+
+    // Speed slider
+    const speedSlider = document.getElementById('speed-slider');
+    speedSlider.addEventListener('input', () => {
+        S.speed = parseFloat(speedSlider.value);
+        const sv = document.getElementById('speed-value');
+        sv.textContent = `${S.speed.toFixed(1)}x`;
+        sv.classList.remove('value-pop');
+        void sv.offsetWidth; // reflow to restart animation
+        sv.classList.add('value-pop');
+        if (audioEl) {
+            audioEl.playbackRate = S.speed;
+            audioEl.preservesPitch = false;
+        }
+    });
+
+    // Zoom slider
+    const zoomSlider = document.getElementById('zoom-slider');
+    function flashZoomBtn(el) {
+        el.classList.remove('option-flash');
+        void el.offsetWidth;
+        el.classList.add('option-flash');
+    }
+    zoomSlider.min = 0; zoomSlider.max = 100; zoomSlider.step = 0.5;
+    zoomSlider.value = zoomToSlider(S.zoom);
+    zoomSlider.addEventListener('input', () => {
+        S.zoom = sliderToZoom(parseFloat(zoomSlider.value));
+        renderTimeline();
+    });
+    document.getElementById('btn-zoom-in').addEventListener('click', () => {
+        S.zoom = Math.min(50, S.zoom * 1.5);
+        syncZoomSlider();
+        flashZoomBtn(document.getElementById('btn-zoom-in'));
+        renderTimeline();
+    });
+    document.getElementById('btn-zoom-out').addEventListener('click', () => {
+        S.zoom = Math.max(0.3, S.zoom / 1.5);
+        syncZoomSlider();
+        flashZoomBtn(document.getElementById('btn-zoom-out'));
+        renderTimeline();
+    });
+    document.getElementById('btn-fit').addEventListener('click', () => {
+        fitToView();
+        flashZoomBtn(document.getElementById('btn-fit'));
+    });
+
+    // Undo / Redo
+    document.getElementById('btn-undo').addEventListener('click', undo);
+    document.getElementById('btn-redo').addEventListener('click', redo);
+
+    // Save
+    document.getElementById('btn-save').addEventListener('click', saveNow);
+
+    // Tab switching with animation
+    document.querySelectorAll('.panel-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => {
+                c.classList.remove('active');
+                c.style.animation = 'none';
+            });
+            tab.classList.add('active');
+            const content = document.getElementById(tab.dataset.tab);
+            content.classList.add('active');
+            // Force re-trigger animation
+            void content.offsetWidth;
+            content.style.animation = '';
+        });
+    });
+
+    // Pitch popup events
+    document.getElementById('pitch-slider').addEventListener('input', (e) => {
+        const v = parseInt(e.target.value);
+        document.getElementById('pitch-value').textContent = v;
+        updatePresetBtns(v);
+    });
+    document.querySelectorAll('#pitch-popup .preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const v = parseInt(btn.dataset.st);
+            document.getElementById('pitch-slider').value = v;
+            document.getElementById('pitch-value').textContent = v;
+            updatePresetBtns(v);
+        });
+    });
+    document.getElementById('pitch-save').addEventListener('click', savePitchDrop);
+    document.getElementById('pitch-remove').addEventListener('click', removePitchDrop);
+    document.getElementById('pitch-cancel').addEventListener('click', closePitchPopup);
+    document.getElementById('pitch-overlay').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closePitchPopup();
+    });
+
+    // SFX popup events
+    document.getElementById('sfx-vol-slider').addEventListener('input', (e) => {
+        document.getElementById('sfx-vol-value').textContent = `${e.target.value}%`;
+    });
+    document.getElementById('sfx-save').addEventListener('click', saveSfxEdit);
+    document.getElementById('sfx-remove').addEventListener('click', () => {
+        removeSfx(sfxPopupWordIdx);
+        closeSfxPopup();
+    });
+    document.getElementById('sfx-cancel').addEventListener('click', closeSfxPopup);
+    document.getElementById('sfx-overlay').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeSfxPopup();
+    });
+
+    // Timeline canvas click — seek
+    const canvas = document.getElementById('timeline-canvas');
+    canvas.addEventListener('click', (e) => {
+        if (e.altKey) return; // Alt+click is for panning
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left + document.getElementById('timeline-scroll').scrollLeft;
+        const t = xToTime(x);
+
+        if (e.shiftKey) {
+            // Loop region
+            if (S.loopIn < 0) {
+                S.loopIn = t;
+                toast(`Loop start: ${fmt(t)}`, 'info');
+            } else if (S.loopOut < 0) {
+                S.loopOut = Math.max(t, S.loopIn + 0.1);
+                if (t < S.loopIn) { S.loopOut = S.loopIn; S.loopIn = t; }
+                toast(`Loop: ${fmt(S.loopIn)} - ${fmt(S.loopOut)}`, 'info');
+            } else {
+                S.loopIn = -1;
+                S.loopOut = -1;
+                toast('Loop cleared', 'info');
+            }
+            renderTimeline();
+        } else {
+            seek(t);
+        }
+    });
+
+    // Timeline canvas drag — playhead scrub
+    let isDragging = false;
+    canvas.addEventListener('mousedown', (e) => {
+        if (e.button !== 0 || e.shiftKey || e.altKey) return;
+        isDragging = true;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left + document.getElementById('timeline-scroll').scrollLeft;
+        seek(xToTime(x));
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left + document.getElementById('timeline-scroll').scrollLeft;
+        seek(xToTime(x));
+    });
+    document.addEventListener('mouseup', () => { isDragging = false; });
+
+    // Re-render on scroll (viewport-based rendering)
+    let scrollRaf = null;
+    document.getElementById('timeline-scroll').addEventListener('scroll', () => {
+        if (scrollRaf) return;
+        scrollRaf = requestAnimationFrame(() => {
+            renderTimeline();
+            scrollRaf = null;
+        });
+    });
+
+    // Scroll wheel zoom on timeline (exponential)
+    document.getElementById('timeline-scroll').addEventListener('wheel', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            const factor = e.deltaY > 0 ? 0.75 : 1.35;
+            S.zoom = Math.max(0.3, Math.min(50, S.zoom * factor));
+            syncZoomSlider();
+            renderTimeline();
+        }
+    }, { passive: false });
+
+    // Sidebar toggle
+    document.getElementById('btn-close-sidebar').addEventListener('click', () => {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.add('collapsed');
+        document.getElementById('btn-open-sidebar').classList.add('visible');
+    });
+    document.getElementById('btn-open-sidebar').addEventListener('click', () => {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.remove('collapsed');
+        document.getElementById('btn-open-sidebar').classList.remove('visible');
+    });
+
+    // Timeline drag-to-pan (middle mouse or Alt+left mouse)
+    const scrollEl = document.getElementById('timeline-scroll');
+    let isPanning = false;
+    let panStartX = 0;
+    let panScrollStart = 0;
+
+    scrollEl.addEventListener('mousedown', (e) => {
+        // Middle mouse button (1) or Alt+left click
+        if (e.button === 1 || (e.button === 0 && e.altKey)) {
+            e.preventDefault();
+            isPanning = true;
+            panStartX = e.clientX;
+            panScrollStart = scrollEl.scrollLeft;
+            scrollEl.classList.add('panning');
+        }
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        e.preventDefault();
+        const dx = e.clientX - panStartX;
+        scrollEl.scrollLeft = panScrollStart - dx;
+    });
+    document.addEventListener('mouseup', (e) => {
+        if (isPanning) {
+            isPanning = false;
+            scrollEl.classList.remove('panning');
+        }
+    });
+
+    // Show grab cursor when Alt is held over timeline
+    scrollEl.addEventListener('mousemove', (e) => {
+        if (!isPanning) {
+            scrollEl.classList.toggle('pan-ready', e.altKey);
+        }
+    });
+    scrollEl.addEventListener('mouseleave', () => {
+        if (!isPanning) scrollEl.classList.remove('pan-ready');
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', handleKeydown);
+
+    // Resize
+    window.addEventListener('resize', () => renderTimeline());
+
+    // Place mode cancel
+    document.getElementById('place-mode-cancel').addEventListener('click', exitPlaceMode);
+
+    // Touch events
+    setupTouchEvents();
+}
+
+// ============================================================
+// Touch Events (mobile)
+// ============================================================
+function setupTouchEvents() {
+    const canvas = document.getElementById('timeline-canvas');
+    const scrollEl = document.getElementById('timeline-scroll');
+
+    // --- Timeline: touch seek & pinch-to-zoom ---
+    let touchSeekActive = false;
+    let pinchStartDist = 0;
+    let pinchStartZoom = 1;
+
+    canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            // Pinch start
+            e.preventDefault();
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            pinchStartDist = Math.hypot(dx, dy);
+            pinchStartZoom = S.zoom;
+        } else if (e.touches.length === 1) {
+            // Single touch — seek
+            e.preventDefault();
+            touchSeekActive = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.touches[0].clientX - rect.left + scrollEl.scrollLeft;
+            seek(xToTime(x));
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+        if (e.touches.length === 2) {
+            // Pinch zoom
+            e.preventDefault();
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const dist = Math.hypot(dx, dy);
+            if (pinchStartDist > 0) {
+                const scale = dist / pinchStartDist;
+                S.zoom = Math.max(0.3, Math.min(50, pinchStartZoom * scale));
+                syncZoomSlider();
+                renderTimeline();
+            }
+        } else if (e.touches.length === 1 && touchSeekActive) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = e.touches[0].clientX - rect.left + scrollEl.scrollLeft;
+            seek(xToTime(x));
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', () => {
+        touchSeekActive = false;
+        pinchStartDist = 0;
+    });
+
+    // --- Word chips: long-press for pitch popup, tap for seek/place ---
+    const transcript = document.getElementById('transcript-words');
+    transcript.addEventListener('touchstart', (e) => {
+        const chip = e.target.closest('.word-chip');
+        if (!chip) return;
+        const idx = parseInt(chip.dataset.idx);
+        if (isNaN(idx)) return;
+
+        // Long-press timer for pitch popup (replaces right-click)
+        longPressTimer = setTimeout(() => {
+            longPressTimer = null;
+            e.preventDefault();
+            openPitchPopup(idx);
+        }, 500);
+    }, { passive: true });
+
+    transcript.addEventListener('touchend', (e) => {
+        const chip = e.target.closest('.word-chip');
+        if (!chip) return;
+        const idx = parseInt(chip.dataset.idx);
+
+        if (longPressTimer) {
+            // Short tap (timer didn't fire)
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+
+            if (placeModesfx) {
+                // Place mode: tap word to place SFX
+                e.preventDefault();
+                handlePlaceModeWordTap(idx);
+            }
+            // Regular tap handled by click listener
+        }
+    });
+
+    transcript.addEventListener('touchmove', () => {
+        // Cancel long-press on scroll
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+    });
+}
+
+function fitToView() {
+    const scroll = document.getElementById('timeline-scroll');
+    const dur = S.duration || 1;
+    S.zoom = (scroll.clientWidth - 60) / (dur * PPS_BASE);
+    S.zoom = Math.max(0.3, Math.min(50, S.zoom));
+    document.getElementById('zoom-slider').value = S.zoom;
+    renderTimeline();
+}
+
+function handleKeydown(e) {
+    // Don't intercept when popup is open and typing
+    const pitchOpen = document.getElementById('pitch-overlay').classList.contains('visible');
+    const sfxOpen = document.getElementById('sfx-overlay').classList.contains('visible');
+    if (pitchOpen || sfxOpen) {
+        if (e.key === 'Escape') { closePitchPopup(); closeSfxPopup(); }
+        return;
+    }
+
+    switch (e.key) {
+        case ' ':
+            e.preventDefault();
+            togglePlay();
+            break;
+        case 'ArrowLeft':
+            e.preventDefault();
+            seek(S.currentTime - (e.shiftKey ? 5 : 1));
+            break;
+        case 'ArrowRight':
+            e.preventDefault();
+            seek(S.currentTime + (e.shiftKey ? 5 : 1));
+            break;
+        case 'Home':
+            e.preventDefault();
+            seek(0);
+            break;
+        case 'End':
+            e.preventDefault();
+            seek(S.duration);
+            break;
+        case 'p':
+        case 'P':
+            if (S.hoveredWord >= 0) openPitchPopup(S.hoveredWord);
+            break;
+        case 'Delete':
+        case 'Backspace':
+            if (S.selectedWord >= 0) {
+                const pd = getPitchForWord(S.selectedWord);
+                const sfx = getSfxForWord(S.selectedWord);
+                if (sfx) removeSfx(S.selectedWord);
+                else if (pd) {
+                    pushUndo();
+                    S.pitchDrops = S.pitchDrops.filter(d => !(S.selectedWord >= d.startIdx && S.selectedWord <= d.endIdx));
+                    renderAll();
+                    toast('Pitch drop removed', 'info');
+                }
+            }
+            break;
+        case 'z':
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                if (e.shiftKey) redo(); else undo();
+            }
+            break;
+        case 'Z':
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                redo();
+            }
+            break;
+        case 's':
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                saveNow();
+            }
+            break;
+        case '+':
+        case '=':
+            S.zoom = Math.min(50, S.zoom * 1.5);
+            syncZoomSlider();
+            renderTimeline();
+            break;
+        case '-':
+            S.zoom = Math.max(0.3, S.zoom / 1.5);
+            syncZoomSlider();
+            renderTimeline();
+            break;
+        case '0':
+            if (!e.ctrlKey && !e.metaKey) fitToView();
+            break;
+        case 'm':
+        case 'M':
+            pushUndo();
+            const colors = ['#ffa502', '#ff4757', '#4ecdc4', '#a55eea', '#2ed573'];
+            S.markers.push({
+                time: S.currentTime,
+                label: '',
+                color: colors[S.markers.length % colors.length],
+            });
+            renderTimeline();
+            toast(`Marker added at ${fmt(S.currentTime)}`, 'info');
+            break;
+    }
+}
+
+// ============================================================
+// Init
+// ============================================================
+async function init() {
+    try {
+        const resp = await fetch('/api/timeline-data');
+        const data = await resp.json();
+
+        S.words = data.words || [];
+        S.sfxLibrary = data.sfx_library || [];
+        isRender = data.is_render || false;
+
+        // Load saved state if exists
+        if (data.state) {
+            S.speed = data.state.speed || data.state.base_speed || 1.2;
+            S.markers = data.state.markers || [];
+
+            // Load pitch drops — handle old format (word_index) and new format (startIdx/endIdx)
+            const rawPD = data.state.pitch_drops || [];
+            S.pitchDrops = rawPD.filter(d => d).map(d => {
+                if (d.startIdx !== undefined) return d;
+                const wi = d.word_index ?? d.wordIndex ?? -1;
+                if (wi < 0) return null;
+                return { startIdx: wi, endIdx: wi, semitones: d.semitones || -4 };
+            }).filter(Boolean);
+
+            // Restore SFX placements from saved state
+            const rawSfx = data.state.sfx_placements || data.state.placements || [];
+            if (Array.isArray(rawSfx) && rawSfx.length) {
+                S.sfxPlacements = rawSfx.map(p => ({
+                    wordIndex: p.word_index ?? p.wordIndex ?? 0,
+                    sfxId: p.sfx_id ?? p.sfxId ?? '',
+                    sfxName: p.sfx_name ?? p.sfxName ?? '',
+                    sfxColor: p.sfx_color ?? p.sfxColor ?? '#ff4757',
+                    volume: Math.round((p.volume ?? 0.7) * (p.volume > 1 ? 1 : 100)),
+                }));
+            }
+
+            document.getElementById('speed-slider').value = S.speed;
+            document.getElementById('speed-value').textContent = `${S.speed.toFixed(1)}x`;
+        }
+
+        // Resolve pitch markers if no valid pitch drops
+        if (!S.pitchDrops.length && data.pitch_markers?.length) {
+            S.pitchDrops = resolvePitchMarkers(data.pitch_markers);
+        }
+
+        initAudio();
+        setupEvents();
+        renderSfxPanel();
+        renderAll();
+        fitToView();
+
+        // Hide loading
+        document.getElementById('loading').classList.add('hidden');
+        toast(`Loaded ${S.words.length} words, ${S.pitchDrops.length} pitch drops`, 'success');
+
+    } catch (e) {
+        console.error('Init failed:', e);
+        document.getElementById('loading').innerHTML =
+            `<div style="color:var(--red)">Failed to load: ${e.message}<br>Is the server running?</div>`;
+    }
+}
+
+init();
+</script>
+</body>
+</html>
