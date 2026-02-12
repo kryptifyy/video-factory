@@ -1051,18 +1051,24 @@ function ensureAudioContext() {
 function unlockAudio() {
     if (audioUnlocked) return;
     audioUnlocked = true;
+    console.log('Audio unlocked by user gesture');
     try {
-        ensureAudioContext();
+        const ctx = ensureAudioContext();
+        console.log('AudioContext state:', ctx ? ctx.state : 'null');
         // Force-load the audio element
-        if (audioEl) audioEl.load();
+        if (audioEl) {
+            audioEl.load();
+            console.log('Audio element readyState:', audioEl.readyState, 'src:', audioEl.src);
+        }
         // Load waveform if not done yet
         if (!waveformLoaded) loadWaveform();
-    } catch(e) {}
+    } catch(e) {
+        console.error('unlockAudio error:', e);
+    }
 }
 
 function initAudio() {
     audioEl = new Audio();
-    audioEl.crossOrigin = 'anonymous';
     audioEl.preload = 'auto';
     audioEl.playbackRate = S.speed;
     audioEl.preservesPitch = false;
@@ -1074,6 +1080,10 @@ function initAudio() {
         document.getElementById('time-total').textContent = fmt(S.duration);
         document.getElementById('nav-time').textContent = `0:00 / ${fmt(S.duration)}`;
         renderTimeline();
+        console.log('Audio loaded: duration=' + S.duration.toFixed(1) + 's');
+    });
+    audioEl.addEventListener('canplaythrough', () => {
+        console.log('Audio ready to play');
     });
     audioEl.addEventListener('ended', () => {
         S.isPlaying = false;
@@ -1082,6 +1092,7 @@ function initAudio() {
     });
     audioEl.addEventListener('error', (e) => {
         console.error('Audio element error:', audioEl.error);
+        toast('Audio failed to load', 'error');
     });
 
     // Waveform is loaded later via unlockAudio() on first user gesture

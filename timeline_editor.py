@@ -79,11 +79,15 @@ class TimelineHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         print(f"  {args[0]}")
 
+    def _cors_headers(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+
     def _send_json(self, data, status=200):
         body = json.dumps(data).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        self._cors_headers()
         self.end_headers()
         self.wfile.write(body)
 
@@ -205,6 +209,7 @@ class TimelineHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "audio/mpeg")
             self.send_header("Content-Length", "0")
+            self._cors_headers()
             self.end_headers()
             return
 
@@ -224,6 +229,7 @@ class TimelineHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(length))
             self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
             self.send_header("Accept-Ranges", "bytes")
+            self._cors_headers()
             self.end_headers()
 
             with open(VOICE_PATH, "rb") as f:
@@ -240,6 +246,7 @@ class TimelineHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "audio/mpeg")
             self.send_header("Content-Length", str(file_size))
             self.send_header("Accept-Ranges", "bytes")
+            self._cors_headers()
             self.end_headers()
 
             with open(VOICE_PATH, "rb") as f:
