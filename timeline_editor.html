@@ -1032,6 +1032,9 @@ async function saveNow() {
 // ============================================================
 // Audio
 // ============================================================
+let waveformLoaded = false;
+let audioUnlocked = false;
+
 function ensureAudioContext() {
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1042,14 +1045,27 @@ function ensureAudioContext() {
     return audioCtx;
 }
 
+// Call this on any user tap/click to unlock audio on mobile
+function unlockAudio() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    try {
+        ensureAudioContext();
+        // Force-load the audio element
+        if (audioEl) audioEl.load();
+        // Load waveform if not done yet
+        if (!waveformLoaded) loadWaveform();
+    } catch(e) {}
+}
+
 function initAudio() {
-    audioEl = new Audio('/api/audio');
+    audioEl = new Audio();
     audioEl.crossOrigin = 'anonymous';
     audioEl.preload = 'auto';
     audioEl.playbackRate = S.speed;
     audioEl.preservesPitch = false;
-    // iOS needs this attribute to play inline
     audioEl.setAttribute('playsinline', '');
+    audioEl.src = '/api/audio';
 
     audioEl.addEventListener('loadedmetadata', () => {
         S.duration = audioEl.duration;
@@ -1062,34 +1078,41 @@ function initAudio() {
         updatePlayBtn();
         cancelAnimationFrame(animFrame);
     });
+    audioEl.addEventListener('error', (e) => {
+        console.error('Audio element error:', audioEl.error);
+    });
 
-    // Decode waveform — deferred until first user gesture on mobile
-    loadWaveform();
+    // Try loading waveform — will silently fail on mobile (retried on first tap)
+    try {
+        loadWaveform();
+    } catch(e) {}
 }
 
 function loadWaveform() {
-    try {
-        const ctx = ensureAudioContext();
-        fetch('/api/audio').then(r => r.arrayBuffer()).then(buf => {
-            if (!buf.byteLength) return;
-            return ctx.decodeAudioData(buf);
-        }).then(decoded => {
-            if (!decoded) return;
-            audioBuffer = decoded;
-            S.duration = decoded.duration;
-            computeWaveform();
-            renderTimeline();
-            document.getElementById('time-total').textContent = fmt(S.duration);
-        }).catch(e => console.error('Audio decode failed:', e));
-    } catch (e) {
-        // AudioContext blocked — will retry on first user gesture
-        console.log('AudioContext deferred until user gesture');
-    }
+    if (waveformLoaded) return;
+    const ctx = ensureAudioContext();
+    fetch('/api/audio').then(r => {
+        if (!r.ok) throw new Error('Audio fetch failed: ' + r.status);
+        return r.arrayBuffer();
+    }).then(buf => {
+        if (!buf.byteLength) {
+            console.warn('Audio file is empty (0 bytes)');
+            return;
+        }
+        return ctx.decodeAudioData(buf);
+    }).then(decoded => {
+        if (!decoded) return;
+        waveformLoaded = true;
+        audioBuffer = decoded;
+        S.duration = decoded.duration;
+        computeWaveform();
+        renderTimeline();
+        document.getElementById('time-total').textContent = fmt(S.duration);
+    }).catch(e => console.error('Waveform load failed:', e));
 }
 
 function connectAnalyser() {
-    // Connect on first play (needs user gesture for AudioContext)
-    if (audioSourceNode) return; // already connected
+    if (audioSourceNode) return;
     try {
         const ctx = ensureAudioContext();
         audioSourceNode = ctx.createMediaElementSource(audioEl);
@@ -1122,10 +1145,8 @@ function computeWaveform() {
 
 function togglePlay() {
     if (!audioEl) return;
-    ensureAudioContext();
+    unlockAudio();
     connectAnalyser();
-    // Retry waveform decode if it failed on load (mobile)
-    if (!audioBuffer) loadWaveform();
     if (S.isPlaying) {
         audioEl.pause();
         S.isPlaying = false;
@@ -1136,16 +1157,20 @@ function togglePlay() {
     } else {
         audioEl.playbackRate = S.speed;
         audioEl.preservesPitch = false;
-        audioEl.play().then(() => {
-            S.isPlaying = true;
-            firedSfx.clear();
-            tick();
-            updatePlayBtn();
-        }).catch(e => {
-            console.error('Play failed:', e);
-            toast('Tap play again (audio unlocked)', 'info');
-        });
-        return; // updatePlayBtn called in .then()
+        const playPromise = audioEl.play();
+        if (playPromise) {
+            playPromise.then(() => {
+                S.isPlaying = true;
+                firedSfx.clear();
+                tick();
+                updatePlayBtn();
+            }).catch(e => {
+                console.error('Play failed:', e);
+                // On mobile first tap might just unlock — try again
+                toast('Tap play again', 'info');
+            });
+        }
+        return;
     }
     updatePlayBtn();
 }
@@ -1989,6 +2014,11 @@ function renderAll() {
 // Event Handlers
 // ============================================================
 function setupEvents() {
+    // Unlock audio on first user interaction (mobile requirement)
+    const unlockOnce = () => { unlockAudio(); document.removeEventListener('touchstart', unlockOnce); document.removeEventListener('click', unlockOnce); };
+    document.addEventListener('touchstart', unlockOnce, { once: true });
+    document.addEventListener('click', unlockOnce, { once: true });
+
     // Play button
     document.getElementById('btn-play').addEventListener('click', togglePlay);
     document.getElementById('btn-start').addEventListener('click', () => seek(0));
