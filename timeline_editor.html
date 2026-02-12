@@ -1037,6 +1037,7 @@ let waveformLoaded = false;
 let audioUnlocked = false;
 
 function ensureAudioContext() {
+    if (!audioUnlocked) return null;
     if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
@@ -1089,6 +1090,7 @@ function initAudio() {
 function loadWaveform() {
     if (waveformLoaded) return;
     const ctx = ensureAudioContext();
+    if (!ctx) return;
     fetch('/api/audio').then(r => {
         if (!r.ok) throw new Error('Audio fetch failed: ' + r.status);
         return r.arrayBuffer();
@@ -1113,6 +1115,7 @@ function connectAnalyser() {
     if (audioSourceNode) return;
     try {
         const ctx = ensureAudioContext();
+        if (!ctx) return;
         audioSourceNode = ctx.createMediaElementSource(audioEl);
         analyser = ctx.createAnalyser();
         analyser.fftSize = 256;
@@ -1229,6 +1232,7 @@ function checkSfxPlayback() {
 
 async function playSfxSound(sfxId, volume) {
     const ctx = ensureAudioContext();
+    if (!ctx) return;
     if (sfxBuffers[sfxId]) {
         const src = ctx.createBufferSource();
         src.buffer = sfxBuffers[sfxId];
