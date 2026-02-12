@@ -1055,11 +1055,7 @@ function unlockAudio() {
     try {
         const ctx = ensureAudioContext();
         console.log('AudioContext state:', ctx ? ctx.state : 'null');
-        // Force-load the audio element
-        if (audioEl) {
-            audioEl.load();
-            console.log('Audio element readyState:', audioEl.readyState, 'src:', audioEl.src);
-        }
+        console.log('Audio element readyState:', audioEl ? audioEl.readyState : 'no element');
         // Load waveform if not done yet
         if (!waveformLoaded) loadWaveform();
     } catch(e) {
@@ -1158,7 +1154,6 @@ function computeWaveform() {
 function togglePlay() {
     if (!audioEl) return;
     unlockAudio();
-    connectAnalyser();
     if (S.isPlaying) {
         audioEl.pause();
         S.isPlaying = false;
@@ -1166,25 +1161,40 @@ function togglePlay() {
         // Clear visualizer
         const vc = document.getElementById('visualizer-canvas');
         vc.getContext('2d').clearRect(0, 0, vc.width, vc.height);
+        updatePlayBtn();
     } else {
+        console.log('Play attempt. readyState:', audioEl.readyState, 'duration:', audioEl.duration);
         audioEl.playbackRate = S.speed;
         audioEl.preservesPitch = false;
-        const playPromise = audioEl.play();
-        if (playPromise) {
-            playPromise.then(() => {
+
+        function doPlay() {
+            // Connect analyser AFTER audio is ready, not before
+            connectAnalyser();
+            audioEl.play().then(() => {
+                console.log('Playing!');
                 S.isPlaying = true;
                 firedSfx.clear();
                 tick();
                 updatePlayBtn();
             }).catch(e => {
                 console.error('Play failed:', e);
-                // On mobile first tap might just unlock — try again
                 toast('Tap play again', 'info');
             });
         }
-        return;
+
+        // If audio isn't ready yet, wait for it
+        if (audioEl.readyState >= 2) {
+            doPlay();
+        } else {
+            console.log('Waiting for audio to buffer...');
+            toast('Loading audio...', 'info');
+            audioEl.addEventListener('canplay', function onReady() {
+                audioEl.removeEventListener('canplay', onReady);
+                console.log('Audio buffered, now playing');
+                doPlay();
+            });
+        }
     }
-    updatePlayBtn();
 }
 
 function seek(t) {
