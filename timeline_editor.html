@@ -1168,8 +1168,9 @@ function togglePlay() {
         audioEl.preservesPitch = false;
 
         function doPlay() {
-            // Connect analyser AFTER audio is ready, not before
-            connectAnalyser();
+            // Only connect analyser on desktop (visualizer hidden on mobile anyway)
+            // createMediaElementSource can break audio on mobile
+            if (!isMobile()) connectAnalyser();
             audioEl.play().then(() => {
                 console.log('Playing!');
                 S.isPlaying = true;
