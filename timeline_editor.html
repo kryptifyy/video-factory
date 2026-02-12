@@ -1065,6 +1065,7 @@ function unlockAudio() {
 
 function initAudio() {
     audioEl = new Audio();
+    audioEl.crossOrigin = 'anonymous';
     audioEl.preload = 'auto';
     audioEl.playbackRate = S.speed;
     audioEl.preservesPitch = false;
