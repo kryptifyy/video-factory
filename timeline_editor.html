@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="/manifest.json">
+<link rel="icon" href="data:,">
 <title>Timeline Editor</title>
 <style>
 /* ===== Reset & Variables ===== */
@@ -1082,10 +1083,7 @@ function initAudio() {
         console.error('Audio element error:', audioEl.error);
     });
 
-    // Try loading waveform — will silently fail on mobile (retried on first tap)
-    try {
-        loadWaveform();
-    } catch(e) {}
+    // Waveform is loaded later via unlockAudio() on first user gesture
 }
 
 function loadWaveform() {
